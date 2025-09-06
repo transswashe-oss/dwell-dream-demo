@@ -8,43 +8,37 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 215 25% 27%;
-
+    /* Coastal/Mombasa theme colors */
+    --background: 199 89% 98%;
+    --foreground: 220 14% 20%;
     --card: 0 0% 100%;
-    --card-foreground: 215 25% 27%;
-
+    --card-foreground: 220 14% 20%;
     --popover: 0 0% 100%;
-    --popover-foreground: 215 25% 27%;
-
-    --primary: 195 100% 28%;
+    --popover-foreground: 220 14% 20%;
+    --primary: 195 100% 45%; /* Ocean blue */
     --primary-foreground: 0 0% 100%;
-
-    --secondary: 210 17% 96%;
-    --secondary-foreground: 215 25% 27%;
-
-    --muted: 210 17% 96%;
-    --muted-foreground: 215 16% 57%;
-
-    --accent: 43 96% 56%;
-    --accent-foreground: 215 25% 27%;
-
+    --secondary: 43 74% 85%; /* Sandy beige */
+    --secondary-foreground: 220 14% 20%;
+    --muted: 199 15% 96%;
+    --muted-foreground: 220 9% 46%;
+    --accent: 25 95% 60%; /* Coral accent */
+    --accent-foreground: 0 0% 100%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
+    --border: 199 27% 89%;
+    --input: 199 27% 89%;
+    --ring: 195 100% 45%;
+    
+    /* Custom gradients and shadows */
+    --gradient-ocean: linear-gradient(135deg, hsl(195, 100%, 45%) 0%, hsl(220, 90%, 50%) 100%);
+    --gradient-sunset: linear-gradient(135deg, hsl(25, 95%, 60%) 0%, hsl(45, 90%, 55%) 100%);
+    --gradient-beach: linear-gradient(180deg, hsl(199, 89%, 98%) 0%, hsl(43, 74%, 95%) 100%);
+    --shadow-coastal: 0 10px 40px -10px hsl(195, 100%, 45%, 0.2);
+    --shadow-warm: 0 8px 32px -8px hsl(25, 95%, 60%, 0.15);
+    --shadow-property: 0 4px 20px rgba(0, 123, 191, 0.08);
+    --shadow-property-hover: 0 12px 40px rgba(0, 123, 191, 0.15);
 
-    --border: 215 12% 91%;
-    --input: 215 12% 91%;
-    --ring: 195 100% 28%;
-
-    /* Real Estate Design System */
-    --hero-gradient: linear-gradient(135deg, hsl(195 100% 28% / 0.9), hsl(195 100% 20% / 0.7));
-    --property-shadow: 0 10px 40px -10px hsl(195 100% 28% / 0.15);
-    --property-shadow-hover: 0 20px 60px -10px hsl(195 100% 28% / 0.25);
-    --gold-accent: 43 96% 56%;
-    --luxury-gradient: linear-gradient(135deg, hsl(43 96% 56%), hsl(43 96% 48%));
-    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
     --sidebar-background: 0 0% 98%;
 
