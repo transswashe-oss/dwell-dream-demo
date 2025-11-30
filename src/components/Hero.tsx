@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, MapPin } from "lucide-react";
-import heroImage from "@/assets/hero-property.jpg";
+import heroImage from "@/assets/hero-mombasa.jpg";
 
 const Hero = () => {
   return (

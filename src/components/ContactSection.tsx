@@ -2,8 +2,51 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Phone, Mail, MapPin, Clock } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
 
 const ContactSection = () => {
+  const { toast } = useToast();
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setSubmitting(true);
+
+    const formData = new FormData(e.currentTarget);
+    const name = `${formData.get('firstName')} ${formData.get('lastName')}`;
+    
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .insert({
+          name,
+          email: formData.get('email') as string,
+          phone: formData.get('phone') as string,
+          message: formData.get('message') as string,
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Message sent!",
+        description: "We'll get back to you soon.",
+      });
+
+      e.currentTarget.reset();
+    } catch (error: any) {
+      console.error('Error sending message:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Could not send message",
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <section className="py-20 bg-background">
       <div className="container mx-auto px-4">
@@ -33,7 +76,7 @@ const ContactSection = () => {
                 </div>
                 <div>
                   <h3 className="font-semibold text-foreground">Email</h3>
-                  <p className="text-muted-foreground">info@dreamhomes.com</p>
+                  <p className="text-muted-foreground">info@staymombasa.com</p>
                 </div>
               </div>
               
@@ -43,7 +86,7 @@ const ContactSection = () => {
                 </div>
                 <div>
                   <h3 className="font-semibold text-foreground">Office</h3>
-                  <p className="text-muted-foreground">123 Real Estate Ave, Suite 100<br />Your City, ST 12345</p>
+                  <p className="text-muted-foreground">Mombasa, Kenya</p>
                 </div>
               </div>
               
@@ -61,19 +104,19 @@ const ContactSection = () => {
           
           <div className="bg-card rounded-2xl p-8 shadow-property">
             <h3 className="text-2xl font-bold text-foreground mb-6">Get In Touch</h3>
-            <form className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-muted-foreground mb-2 block">
                     First Name
                   </label>
-                  <Input placeholder="John" />
+                  <Input name="firstName" placeholder="John" required />
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground mb-2 block">
                     Last Name
                   </label>
-                  <Input placeholder="Doe" />
+                  <Input name="lastName" placeholder="Doe" required />
                 </div>
               </div>
               
@@ -81,14 +124,14 @@ const ContactSection = () => {
                 <label className="text-sm font-medium text-muted-foreground mb-2 block">
                   Email
                 </label>
-                <Input type="email" placeholder="john@example.com" />
+                <Input name="email" type="email" placeholder="john@example.com" required />
               </div>
               
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-2 block">
                   Phone
                 </label>
-                <Input type="tel" placeholder="(555) 123-4567" />
+                <Input name="phone" type="tel" placeholder="+254 712 345 678" required />
               </div>
               
               <div>
@@ -96,13 +139,20 @@ const ContactSection = () => {
                   Message
                 </label>
                 <Textarea 
+                  name="message"
                   placeholder="Tell us about your dream home..."
                   rows={4}
+                  required
                 />
               </div>
               
-              <Button size="lg" className="w-full bg-primary hover:bg-primary/90">
-                Send Message
+              <Button 
+                type="submit" 
+                size="lg" 
+                className="w-full bg-primary hover:bg-primary/90"
+                disabled={submitting}
+              >
+                {submitting ? 'Sending...' : 'Send Message'}
               </Button>
             </form>
           </div>
