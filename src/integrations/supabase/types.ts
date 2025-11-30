@@ -16,50 +16,53 @@ export type Database = {
     Tables: {
       apartments: {
         Row: {
-          bathrooms: number
+          bathrooms: number | null
           created_at: string
           description: string
           display_image: string | null
           featured: boolean | null
           gallery_images: string[] | null
+          google_maps_url: string | null
           id: string
           location: string
           name: string
           price: number
           rooms: number
-          square_feet: number
+          square_feet: number | null
           type: string
           updated_at: string
         }
         Insert: {
-          bathrooms: number
+          bathrooms?: number | null
           created_at?: string
           description: string
           display_image?: string | null
           featured?: boolean | null
           gallery_images?: string[] | null
+          google_maps_url?: string | null
           id?: string
           location: string
           name: string
           price: number
           rooms: number
-          square_feet: number
+          square_feet?: number | null
           type: string
           updated_at?: string
         }
         Update: {
-          bathrooms?: number
+          bathrooms?: number | null
           created_at?: string
           description?: string
           display_image?: string | null
           featured?: boolean | null
           gallery_images?: string[] | null
+          google_maps_url?: string | null
           id?: string
           location?: string
           name?: string
           price?: number
           rooms?: number
-          square_feet?: number
+          square_feet?: number | null
           type?: string
           updated_at?: string
         }

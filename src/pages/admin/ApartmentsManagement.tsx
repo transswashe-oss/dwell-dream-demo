@@ -19,12 +19,13 @@ interface Apartment {
   location: string;
   price: number;
   rooms: number;
-  bathrooms: number;
-  square_feet: number;
+  bathrooms?: number;
+  square_feet?: number;
   description: string;
   display_image?: string;
   gallery_images?: string[];
   featured: boolean;
+  google_maps_url?: string;
 }
 
 const ApartmentsManagement = () => {
@@ -34,6 +35,8 @@ const ApartmentsManagement = () => {
   const [showDialog, setShowDialog] = useState(false);
   const [editingApartment, setEditingApartment] = useState<Apartment | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [displayImageFile, setDisplayImageFile] = useState<File | null>(null);
+  const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
 
   useEffect(() => {
     fetchApartments();
@@ -65,23 +68,62 @@ const ApartmentsManagement = () => {
     setSubmitting(true);
 
     const formData = new FormData(e.currentTarget);
-    const galleryImages = formData.get('gallery_images') as string;
     
-    const apartmentData = {
-      name: formData.get('name') as string,
-      type: formData.get('type') as string,
-      location: formData.get('location') as string,
-      price: parseFloat(formData.get('price') as string),
-      rooms: parseInt(formData.get('rooms') as string),
-      bathrooms: parseInt(formData.get('bathrooms') as string),
-      square_feet: parseInt(formData.get('square_feet') as string),
-      description: formData.get('description') as string,
-      display_image: formData.get('display_image') as string || null,
-      gallery_images: galleryImages ? galleryImages.split(',').map(s => s.trim()) : null,
-      featured: formData.get('featured') === 'on',
-    };
-
     try {
+      let displayImageUrl = editingApartment?.display_image;
+      let galleryImageUrls = editingApartment?.gallery_images || [];
+
+      // Upload display image if new file selected
+      if (displayImageFile) {
+        const fileExt = displayImageFile.name.split('.').pop();
+        const fileName = `${Math.random()}.${fileExt}`;
+        const { error: uploadError, data } = await supabase.storage
+          .from('apartment-images')
+          .upload(fileName, displayImageFile);
+        
+        if (uploadError) throw uploadError;
+        
+        const { data: { publicUrl } } = supabase.storage
+          .from('apartment-images')
+          .getPublicUrl(fileName);
+        
+        displayImageUrl = publicUrl;
+      }
+
+      // Upload gallery images if new files selected
+      if (galleryFiles.length > 0) {
+        const uploadPromises = galleryFiles.map(async (file) => {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${Math.random()}.${fileExt}`;
+          const { error: uploadError } = await supabase.storage
+            .from('apartment-images')
+            .upload(fileName, file);
+          
+          if (uploadError) throw uploadError;
+          
+          const { data: { publicUrl } } = supabase.storage
+            .from('apartment-images')
+            .getPublicUrl(fileName);
+          
+          return publicUrl;
+        });
+        
+        galleryImageUrls = await Promise.all(uploadPromises);
+      }
+    
+      const apartmentData = {
+        name: formData.get('name') as string,
+        type: formData.get('type') as string,
+        location: formData.get('location') as string,
+        price: parseFloat(formData.get('price') as string),
+        rooms: parseInt(formData.get('rooms') as string),
+        description: formData.get('description') as string,
+        display_image: displayImageUrl || null,
+        gallery_images: galleryImageUrls.length > 0 ? galleryImageUrls : null,
+        featured: formData.get('featured') === 'on',
+        google_maps_url: formData.get('google_maps_url') as string || null,
+      };
+
       if (editingApartment) {
         const { error } = await supabase
           .from('apartments')
@@ -109,6 +151,8 @@ const ApartmentsManagement = () => {
 
       setShowDialog(false);
       setEditingApartment(null);
+      setDisplayImageFile(null);
+      setGalleryFiles([]);
       fetchApartments();
     } catch (error: any) {
       console.error('Error saving apartment:', error);
@@ -156,6 +200,8 @@ const ApartmentsManagement = () => {
 
   const openCreateDialog = () => {
     setEditingApartment(null);
+    setDisplayImageFile(null);
+    setGalleryFiles([]);
     setShowDialog(true);
   };
 
@@ -231,42 +277,16 @@ const ApartmentsManagement = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="rooms">Bedrooms *</Label>
-                  <Input
-                    id="rooms"
-                    name="rooms"
-                    type="number"
-                    defaultValue={editingApartment?.rooms}
-                    required
-                    min="1"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="bathrooms">Bathrooms *</Label>
-                  <Input
-                    id="bathrooms"
-                    name="bathrooms"
-                    type="number"
-                    defaultValue={editingApartment?.bathrooms}
-                    required
-                    min="1"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="square_feet">Square Feet *</Label>
-                  <Input
-                    id="square_feet"
-                    name="square_feet"
-                    type="number"
-                    defaultValue={editingApartment?.square_feet}
-                    required
-                    min="1"
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="rooms">Bedrooms *</Label>
+                <Input
+                  id="rooms"
+                  name="rooms"
+                  type="number"
+                  defaultValue={editingApartment?.rooms}
+                  required
+                  min="1"
+                />
               </div>
 
               <div className="space-y-2">
@@ -282,24 +302,44 @@ const ApartmentsManagement = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="display_image">Display Image URL</Label>
+                <Label htmlFor="display_image">Display Image</Label>
                 <Input
                   id="display_image"
                   name="display_image"
-                  type="url"
-                  defaultValue={editingApartment?.display_image}
-                  placeholder="https://example.com/image.jpg"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setDisplayImageFile(e.target.files?.[0] || null)}
                 />
+                {editingApartment?.display_image && (
+                  <p className="text-sm text-muted-foreground">Current image will be replaced if you upload a new one</p>
+                )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="gallery_images">Gallery Images (comma-separated URLs)</Label>
-                <Textarea
+                <Label htmlFor="gallery_images">Gallery Images</Label>
+                <Input
                   id="gallery_images"
                   name="gallery_images"
-                  defaultValue={editingApartment?.gallery_images?.join(', ')}
-                  rows={2}
-                  placeholder="https://example.com/img1.jpg, https://example.com/img2.jpg"
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={(e) => setGalleryFiles(Array.from(e.target.files || []))}
+                />
+                {editingApartment?.gallery_images && editingApartment.gallery_images.length > 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    Current {editingApartment.gallery_images.length} image(s) will be replaced if you upload new ones
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="google_maps_url">Google Maps URL</Label>
+                <Input
+                  id="google_maps_url"
+                  name="google_maps_url"
+                  type="url"
+                  defaultValue={editingApartment?.google_maps_url}
+                  placeholder="https://maps.google.com/..."
                 />
               </div>
 
@@ -364,10 +404,6 @@ const ApartmentsManagement = () => {
                       <span>KSh {apartment.price.toLocaleString()}</span>
                       <span>•</span>
                       <span>{apartment.rooms} beds</span>
-                      <span>•</span>
-                      <span>{apartment.bathrooms} baths</span>
-                      <span>•</span>
-                      <span>{apartment.square_feet} sqft</span>
                     </div>
                   </div>
                   <div className="flex gap-2">
