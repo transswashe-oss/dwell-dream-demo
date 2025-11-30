@@ -19,6 +19,9 @@ import {
   X
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import ApartmentsManagement from "./ApartmentsManagement";
+import BookingsManagement from "./BookingsManagement";
+import MessagesManagement from "./MessagesManagement";
 
 interface DashboardStats {
   totalApartments: number;
@@ -85,18 +88,34 @@ const AdminOverview = () => {
         totalMessages: messagesRes.count || 0,
       });
 
-      // Fetch recent bookings
+      // Fetch recent bookings with user profiles
       const { data: bookingsData } = await supabase
         .from('bookings')
         .select(`
           *,
-          apartments(name, price, type),
-          profiles(name)
+          apartments(name, price, type)
         `)
         .order('created_at', { ascending: false })
         .limit(5);
 
-      setRecentBookings(bookingsData || []);
+      // Fetch profiles separately for each booking
+      if (bookingsData) {
+        const bookingsWithProfiles = await Promise.all(
+          bookingsData.map(async (booking) => {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('name')
+              .eq('user_id', booking.user_id)
+              .single();
+            
+            return {
+              ...booking,
+              profiles: { name: profile?.name || 'Unknown User' }
+            };
+          })
+        );
+        setRecentBookings(bookingsWithProfiles);
+      }
 
       // Fetch recent messages
       const { data: messagesData } = await supabase
@@ -330,20 +349,38 @@ const AdminDashboard = () => {
               Overview
             </Button>
           </Link>
-          <Button variant="outline" className="whitespace-nowrap" disabled>
-            Apartments
-          </Button>
-          <Button variant="outline" className="whitespace-nowrap" disabled>
-            Bookings
-          </Button>
-          <Button variant="outline" className="whitespace-nowrap" disabled>
-            Messages
-          </Button>
+          <Link to="/admin/apartments">
+            <Button 
+              variant={location.pathname === '/admin/apartments' ? 'default' : 'outline'}
+              className="whitespace-nowrap"
+            >
+              Apartments
+            </Button>
+          </Link>
+          <Link to="/admin/bookings">
+            <Button 
+              variant={location.pathname === '/admin/bookings' ? 'default' : 'outline'}
+              className="whitespace-nowrap"
+            >
+              Bookings
+            </Button>
+          </Link>
+          <Link to="/admin/messages">
+            <Button 
+              variant={location.pathname === '/admin/messages' ? 'default' : 'outline'}
+              className="whitespace-nowrap"
+            >
+              Messages
+            </Button>
+          </Link>
         </div>
 
         {/* Dashboard Content */}
         <Routes>
           <Route path="/" element={<AdminOverview />} />
+          <Route path="/apartments" element={<ApartmentsManagement />} />
+          <Route path="/bookings" element={<BookingsManagement />} />
+          <Route path="/messages" element={<MessagesManagement />} />
           <Route path="*" element={<AdminOverview />} />
         </Routes>
       </div>
