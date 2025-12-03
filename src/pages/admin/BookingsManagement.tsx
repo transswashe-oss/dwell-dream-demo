@@ -2,15 +2,20 @@ import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, X, Calendar, User, CreditCard } from "lucide-react";
+import { Check, X, Calendar, User, CreditCard, Moon, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
 
 interface Booking {
   id: string;
   transaction_code: string;
   status: string;
   created_at: string;
+  check_in_date: string | null;
+  check_in_time: string | null;
+  nights: number | null;
+  total_amount: number | null;
   apartments: {
     name: string;
     price: number;
@@ -138,7 +143,7 @@ const BookingsManagement = () => {
                         {booking.status}
                       </Badge>
                     </div>
-                    <div className="grid md:grid-cols-2 gap-4 text-sm">
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
                       <div className="flex items-center text-muted-foreground">
                         <User className="h-4 w-4 mr-2" />
                         <span><strong>Client:</strong> {booking.profiles.name}</span>
@@ -149,11 +154,29 @@ const BookingsManagement = () => {
                       </div>
                       <div className="flex items-center text-muted-foreground">
                         <Calendar className="h-4 w-4 mr-2" />
-                        <span><strong>Date:</strong> {new Date(booking.created_at).toLocaleDateString()}</span>
+                        <span><strong>Booked:</strong> {new Date(booking.created_at).toLocaleDateString()}</span>
                       </div>
+                      {booking.check_in_date && (
+                        <div className="flex items-center text-muted-foreground">
+                          <Calendar className="h-4 w-4 mr-2" />
+                          <span><strong>Check-in:</strong> {format(new Date(booking.check_in_date), 'PPP')}</span>
+                        </div>
+                      )}
+                      {booking.check_in_time && (
+                        <div className="flex items-center text-muted-foreground">
+                          <Clock className="h-4 w-4 mr-2" />
+                          <span><strong>Time:</strong> {booking.check_in_time}</span>
+                        </div>
+                      )}
+                      {booking.nights && (
+                        <div className="flex items-center text-muted-foreground">
+                          <Moon className="h-4 w-4 mr-2" />
+                          <span><strong>Nights:</strong> {booking.nights}</span>
+                        </div>
+                      )}
                       <div className="flex items-center text-muted-foreground">
                         <span className="mr-2">💰</span>
-                        <span><strong>Amount:</strong> KSh {booking.apartments.price.toLocaleString()}</span>
+                        <span><strong>Total:</strong> KSh {(booking.total_amount || booking.apartments.price).toLocaleString()}</span>
                       </div>
                     </div>
                   </div>

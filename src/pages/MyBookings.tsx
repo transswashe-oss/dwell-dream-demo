@@ -5,18 +5,22 @@ import { useAuth } from "@/hooks/useAuth";
 import { Navigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, MapPin, CreditCard, Clock } from "lucide-react";
+import { Calendar, MapPin, CreditCard, Clock, Moon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { format } from "date-fns";
 
 interface Booking {
   id: string;
   transaction_code: string;
   status: string;
   created_at: string;
+  check_in_date: string | null;
+  check_in_time: string | null;
+  nights: number | null;
+  total_amount: number | null;
   apartment: {
     id: string;
     name: string;
-    type: string;
     location: string;
     price: number;
     display_image?: string;
@@ -43,7 +47,6 @@ const MyBookings = () => {
           apartment:apartments(
             id,
             name,
-            type,
             location,
             price,
             display_image
@@ -59,15 +62,6 @@ const MyBookings = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const formatPrice = (price: number, type: string) => {
-    if (type === 'Rent') {
-      return `KSh ${price.toLocaleString()}/month`;
-    } else if (type === 'Airbnb') {
-      return `KSh ${price.toLocaleString()}/night`;
-    }
-    return `KSh ${price.toLocaleString()}`;
   };
 
   const getStatusColor = (status: string) => {
@@ -118,7 +112,7 @@ const MyBookings = () => {
             My Bookings
           </h1>
           <p className="text-muted-foreground">
-            Track the status of your property bookings
+            Track the status of your Airbnb bookings
           </p>
         </div>
 
@@ -159,31 +153,47 @@ const MyBookings = () => {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                  <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-4 text-sm">
+                    {booking.check_in_date && (
+                      <div className="flex items-center">
+                        <Calendar className="h-4 w-4 mr-2 text-primary" />
+                        <div>
+                          <div className="font-medium">Check-in Date</div>
+                          <div className="text-muted-foreground">
+                            {format(new Date(booking.check_in_date), 'PPP')}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {booking.check_in_time && (
+                      <div className="flex items-center">
+                        <Clock className="h-4 w-4 mr-2 text-primary" />
+                        <div>
+                          <div className="font-medium">Check-in Time</div>
+                          <div className="text-muted-foreground">
+                            {booking.check_in_time}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {booking.nights && (
+                      <div className="flex items-center">
+                        <Moon className="h-4 w-4 mr-2 text-primary" />
+                        <div>
+                          <div className="font-medium">Duration</div>
+                          <div className="text-muted-foreground">
+                            {booking.nights} night{booking.nights > 1 ? 's' : ''}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
                     <div className="flex items-center">
                       <CreditCard className="h-4 w-4 mr-2 text-primary" />
                       <div>
-                        <div className="font-medium">Price</div>
-                        <div className="text-muted-foreground">
-                          {formatPrice(booking.apartment.price, booking.apartment.type)}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center">
-                      <Calendar className="h-4 w-4 mr-2 text-primary" />
-                      <div>
-                        <div className="font-medium">Booking Date</div>
-                        <div className="text-muted-foreground">
-                          {new Date(booking.created_at).toLocaleDateString()}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center">
-                      <Clock className="h-4 w-4 mr-2 text-primary" />
-                      <div>
-                        <div className="font-medium">Transaction Code</div>
+                        <div className="font-medium">Transaction</div>
                         <div className="text-muted-foreground font-mono">
                           {booking.transaction_code}
                         </div>
@@ -191,19 +201,18 @@ const MyBookings = () => {
                     </div>
                     
                     <div className="flex items-center">
-                      <div className="w-4 h-4 mr-2 bg-primary rounded-full flex items-center justify-center">
-                        <span className="text-white text-xs">
-                          {booking.apartment.type.charAt(0)}
-                        </span>
-                      </div>
+                      <span className="text-primary mr-2">💰</span>
                       <div>
-                        <div className="font-medium">Type</div>
+                        <div className="font-medium">Total Amount</div>
                         <div className="text-muted-foreground">
-                          {booking.apartment.type === 'Buy' ? 'For Sale' : 
-                           booking.apartment.type === 'Rent' ? 'For Rent' : 'Airbnb'}
+                          KSh {(booking.total_amount || booking.apartment.price).toLocaleString()}
                         </div>
                       </div>
                     </div>
+                  </div>
+                  
+                  <div className="mt-4 text-sm text-muted-foreground">
+                    Booked on {new Date(booking.created_at).toLocaleDateString()}
                   </div>
                   
                   {booking.status === 'Pending' && (
