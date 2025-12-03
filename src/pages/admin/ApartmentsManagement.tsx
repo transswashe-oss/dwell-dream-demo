@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Plus, Edit, Trash2, Eye } from "lucide-react";
@@ -19,8 +18,6 @@ interface Apartment {
   location: string;
   price: number;
   rooms: number;
-  bathrooms?: number;
-  square_feet?: number;
   description: string;
   display_image?: string;
   gallery_images?: string[];
@@ -77,7 +74,7 @@ const ApartmentsManagement = () => {
       if (displayImageFile) {
         const fileExt = displayImageFile.name.split('.').pop();
         const fileName = `${Math.random()}.${fileExt}`;
-        const { error: uploadError, data } = await supabase.storage
+        const { error: uploadError } = await supabase.storage
           .from('apartment-images')
           .upload(fileName, displayImageFile);
         
@@ -113,7 +110,7 @@ const ApartmentsManagement = () => {
     
       const apartmentData = {
         name: formData.get('name') as string,
-        type: formData.get('type') as string,
+        type: 'Airbnb',
         location: formData.get('location') as string,
         price: parseFloat(formData.get('price') as string),
         rooms: parseInt(formData.get('rooms') as string),
@@ -240,28 +237,26 @@ const ApartmentsManagement = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="type">Type *</Label>
-                  <Select name="type" defaultValue={editingApartment?.type || 'Rent'} required>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Rent">Rent</SelectItem>
-                      <SelectItem value="Airbnb">Airbnb</SelectItem>
-                      <SelectItem value="Buy">Buy</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="price">Price (KSh) *</Label>
+                  <Label htmlFor="price">Price per Night (KSh) *</Label>
                   <Input
                     id="price"
                     name="price"
                     type="number"
                     defaultValue={editingApartment?.price}
                     required
-                    placeholder="e.g., 50000"
+                    placeholder="e.g., 5000"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="rooms">Bedrooms *</Label>
+                  <Input
+                    id="rooms"
+                    name="rooms"
+                    type="number"
+                    defaultValue={editingApartment?.rooms}
+                    required
+                    min="1"
                   />
                 </div>
               </div>
@@ -274,18 +269,6 @@ const ApartmentsManagement = () => {
                   defaultValue={editingApartment?.location}
                   required
                   placeholder="e.g., Nyali, Mombasa"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="rooms">Bedrooms *</Label>
-                <Input
-                  id="rooms"
-                  name="rooms"
-                  type="number"
-                  defaultValue={editingApartment?.rooms}
-                  required
-                  min="1"
                 />
               </div>
 
@@ -399,9 +382,7 @@ const ApartmentsManagement = () => {
                     </div>
                     <p className="text-muted-foreground mb-2">{apartment.location}</p>
                     <div className="flex gap-4 text-sm text-muted-foreground">
-                      <span>{apartment.type}</span>
-                      <span>•</span>
-                      <span>KSh {apartment.price.toLocaleString()}</span>
+                      <span>KSh {apartment.price.toLocaleString()}/night</span>
                       <span>•</span>
                       <span>{apartment.rooms} beds</span>
                     </div>

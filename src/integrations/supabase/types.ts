@@ -71,27 +71,39 @@ export type Database = {
       bookings: {
         Row: {
           apartment_id: string
+          check_in_date: string | null
+          check_in_time: string | null
           created_at: string
           id: string
+          nights: number | null
           status: string | null
+          total_amount: number | null
           transaction_code: string
           updated_at: string
           user_id: string
         }
         Insert: {
           apartment_id: string
+          check_in_date?: string | null
+          check_in_time?: string | null
           created_at?: string
           id?: string
+          nights?: number | null
           status?: string | null
+          total_amount?: number | null
           transaction_code: string
           updated_at?: string
           user_id: string
         }
         Update: {
           apartment_id?: string
+          check_in_date?: string | null
+          check_in_time?: string | null
           created_at?: string
           id?: string
+          nights?: number | null
           status?: string | null
+          total_amount?: number | null
           transaction_code?: string
           updated_at?: string
           user_id?: string
