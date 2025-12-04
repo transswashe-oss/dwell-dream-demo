@@ -27,7 +27,7 @@ interface Booking {
   profiles: {
     name: string;
     phone: string | null;
-    email: string;
+    email: string | null;
   };
 }
 
@@ -58,7 +58,7 @@ const BookingsManagement = () => {
           bookingsData.map(async (booking) => {
             const { data: profile } = await supabase
               .from('profiles')
-              .select('name, phone, user_id')
+              .select('name, phone, email')
               .eq('user_id', booking.user_id)
               .single();
             
@@ -67,6 +67,7 @@ const BookingsManagement = () => {
               profiles: { 
                 name: profile?.name || 'Unknown User',
                 phone: profile?.phone || null,
+                email: profile?.email || null,
               }
             };
           })
