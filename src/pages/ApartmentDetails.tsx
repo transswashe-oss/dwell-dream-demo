@@ -120,9 +120,35 @@ const ApartmentDetails = () => {
 
       if (error) throw error;
 
+      // Send email notifications
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('name')
+          .eq('user_id', user.id)
+          .single();
+
+        await supabase.functions.invoke('send-booking-email', {
+          body: {
+            clientEmail: user.email,
+            clientName: profile?.name || 'Guest',
+            apartmentName: apartment.name,
+            apartmentLocation: apartment.location,
+            checkInDate: format(checkInDate, 'PPP'),
+            checkInTime: checkInTime,
+            nights: nights,
+            totalAmount: totalAmount,
+            transactionCode: transactionCode,
+          },
+        });
+      } catch (emailError) {
+        console.error('Error sending email:', emailError);
+        // Don't fail the booking if email fails
+      }
+
       toast({
         title: "Booking Submitted!",
-        description: "Your booking request has been submitted for admin approval.",
+        description: "Your booking request has been submitted. Check your email for confirmation.",
       });
       
       setShowBookingDialog(false);
