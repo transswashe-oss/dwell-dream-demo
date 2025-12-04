@@ -14,7 +14,7 @@ const Hero = () => {
   const handleSearch = () => {
     const params = new URLSearchParams();
     if (location) params.set("location", location);
-    if (priceRange) params.set("price", priceRange);
+    if (priceRange && priceRange !== "any") params.set("price", priceRange);
     navigate(`/apartments?${params.toString()}`);
   };
 
@@ -60,7 +60,7 @@ const Hero = () => {
                     <SelectValue placeholder="Any Price" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Any Price</SelectItem>
+                    <SelectItem value="any">Any Price</SelectItem>
                     <SelectItem value="0-5000">KSh 0 - 5,000</SelectItem>
                     <SelectItem value="5000-10000">KSh 5,000 - 10,000</SelectItem>
                     <SelectItem value="10000-20000">KSh 10,000 - 20,000</SelectItem>
