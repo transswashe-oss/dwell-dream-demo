@@ -72,7 +72,7 @@ const Apartments = () => {
     }
 
     // Price range filter
-    if (priceRange) {
+    if (priceRange && priceRange !== "any") {
       const [min, max] = priceRange.split('-').map(p => parseInt(p.replace('+', '')));
       filtered = filtered.filter(apt => {
         if (priceRange.includes('+')) {
@@ -83,7 +83,7 @@ const Apartments = () => {
     }
 
     // Rooms filter
-    if (rooms) {
+    if (rooms && rooms !== "any") {
       filtered = filtered.filter(apt => apt.rooms === parseInt(rooms));
     }
 
@@ -149,7 +149,7 @@ const Apartments = () => {
                         <SelectValue placeholder="Any Price" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Any Price</SelectItem>
+                        <SelectItem value="any">Any Price</SelectItem>
                         <SelectItem value="0-5000">KSh 0 - 5,000</SelectItem>
                         <SelectItem value="5000-10000">KSh 5,000 - 10,000</SelectItem>
                         <SelectItem value="10000-20000">KSh 10,000 - 20,000</SelectItem>
@@ -165,7 +165,7 @@ const Apartments = () => {
                         <SelectValue placeholder="Any" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Any</SelectItem>
+                        <SelectItem value="any">Any</SelectItem>
                         <SelectItem value="1">1 Bedroom</SelectItem>
                         <SelectItem value="2">2 Bedrooms</SelectItem>
                         <SelectItem value="3">3 Bedrooms</SelectItem>
