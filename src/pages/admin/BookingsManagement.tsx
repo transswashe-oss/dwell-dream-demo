@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, X, Calendar, User, CreditCard, Moon, Clock, Mail, Phone } from "lucide-react";
+import { Check, X, Calendar, User, CreditCard, Moon, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -16,19 +16,15 @@ interface Booking {
   check_in_time: string | null;
   nights: number | null;
   total_amount: number | null;
-  user_id: string;
   apartments: {
     name: string;
     price: number;
     type: string;
-    location: string;
-    display_image: string | null;
   };
   profiles: {
     name: string;
-    phone: string | null;
-    email: string;
   };
+  user_id: string;
 }
 
 const BookingsManagement = () => {
@@ -46,7 +42,7 @@ const BookingsManagement = () => {
         .from('bookings')
         .select(`
           *,
-          apartments(name, price, type, location, display_image)
+          apartments(name, price, type)
         `)
         .order('created_at', { ascending: false });
 
@@ -58,16 +54,13 @@ const BookingsManagement = () => {
           bookingsData.map(async (booking) => {
             const { data: profile } = await supabase
               .from('profiles')
-              .select('name, phone, user_id')
+              .select('name')
               .eq('user_id', booking.user_id)
               .single();
             
             return {
               ...booking,
-              profiles: { 
-                name: profile?.name || 'Unknown User',
-                phone: profile?.phone || null,
-              }
+              profiles: { name: profile?.name || 'Unknown User' }
             };
           })
         );
@@ -85,42 +78,18 @@ const BookingsManagement = () => {
     }
   };
 
-  const handleUpdateStatus = async (booking: Booking, status: 'Approved' | 'Rejected') => {
+  const handleUpdateStatus = async (bookingId: string, status: 'Approved' | 'Rejected') => {
     try {
       const { error } = await supabase
         .from('bookings')
         .update({ status })
-        .eq('id', booking.id);
+        .eq('id', bookingId);
 
       if (error) throw error;
 
-      // Send status update email to client
-      try {
-        await supabase.functions.invoke('send-booking-status-email', {
-          body: {
-            clientEmail: booking.profiles.email,
-            clientName: booking.profiles.name,
-            clientPhone: booking.profiles.phone || '',
-            apartmentName: booking.apartments.name,
-            apartmentLocation: booking.apartments.location,
-            apartmentImage: booking.apartments.display_image || '',
-            checkInDate: booking.check_in_date ? format(new Date(booking.check_in_date), 'PPP') : 'Not specified',
-            checkInTime: booking.check_in_time || 'Not specified',
-            nights: booking.nights || 1,
-            totalAmount: booking.total_amount || booking.apartments.price,
-            transactionCode: booking.transaction_code,
-            status: status,
-          },
-        });
-        console.log('Status email sent successfully');
-      } catch (emailError) {
-        console.error('Error sending status email:', emailError);
-        // Don't fail the status update if email fails
-      }
-
       toast({
         title: "Success",
-        description: `Booking ${status.toLowerCase()} successfully. Email notification sent to client.`,
+        description: `Booking ${status.toLowerCase()} successfully`,
       });
 
       fetchBookings();
@@ -166,51 +135,19 @@ const BookingsManagement = () => {
           {bookings.map((booking) => (
             <Card key={booking.id} className="shadow-coastal">
               <CardContent className="p-6">
-                <div className="flex items-start gap-4">
-                  {/* Apartment Image */}
-                  {booking.apartments.display_image && (
-                    <div className="hidden md:block flex-shrink-0">
-                      <img 
-                        src={booking.apartments.display_image} 
-                        alt={booking.apartments.name}
-                        className="w-24 h-24 object-cover rounded-lg"
-                      />
-                    </div>
-                  )}
-                  
+                <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-3">
+                    <div className="flex items-center gap-3 mb-2">
                       <h3 className="text-xl font-semibold">{booking.apartments.name}</h3>
                       <Badge className={getStatusColor(booking.status)}>
                         {booking.status}
                       </Badge>
                     </div>
-                    
-                    {/* Client Details Section */}
-                    <div className="bg-secondary/30 rounded-lg p-3 mb-4">
-                      <h4 className="text-sm font-semibold mb-2 text-foreground">Client Information</h4>
-                      <div className="grid md:grid-cols-3 gap-2 text-sm">
-                        <div className="flex items-center text-muted-foreground">
-                          <User className="h-4 w-4 mr-2 flex-shrink-0" />
-                          <span>{booking.profiles.name}</span>
-                        </div>
-                        {booking.profiles.email && (
-                          <div className="flex items-center text-muted-foreground">
-                            <Mail className="h-4 w-4 mr-2 flex-shrink-0" />
-                            <span className="truncate">{booking.profiles.email}</span>
-                          </div>
-                        )}
-                        {booking.profiles.phone && (
-                          <div className="flex items-center text-muted-foreground">
-                            <Phone className="h-4 w-4 mr-2 flex-shrink-0" />
-                            <span>{booking.profiles.phone}</span>
-                          </div>
-                        )}
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                      <div className="flex items-center text-muted-foreground">
+                        <User className="h-4 w-4 mr-2" />
+                        <span><strong>Client:</strong> {booking.profiles.name}</span>
                       </div>
-                    </div>
-                    
-                    {/* Booking Details */}
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
                       <div className="flex items-center text-muted-foreground">
                         <CreditCard className="h-4 w-4 mr-2" />
                         <span><strong>Transaction:</strong> {booking.transaction_code}</span>
@@ -245,10 +182,10 @@ const BookingsManagement = () => {
                   </div>
                   
                   {booking.status === 'Pending' && (
-                    <div className="flex flex-col gap-2 ml-4">
+                    <div className="flex gap-2 ml-4">
                       <Button
                         size="sm"
-                        onClick={() => handleUpdateStatus(booking, 'Approved')}
+                        onClick={() => handleUpdateStatus(booking.id, 'Approved')}
                         className="bg-green-600 hover:bg-green-700"
                       >
                         <Check className="h-4 w-4 mr-1" />
@@ -257,7 +194,7 @@ const BookingsManagement = () => {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => handleUpdateStatus(booking, 'Rejected')}
+                        onClick={() => handleUpdateStatus(booking.id, 'Rejected')}
                         className="text-red-600 hover:text-red-700 hover:bg-red-50"
                       >
                         <X className="h-4 w-4 mr-1" />
