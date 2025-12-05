@@ -23,6 +23,10 @@ interface Booking {
     type: string;
     location: string;
     display_image: string | null;
+    description: string;
+    rooms: number;
+    bathrooms: number | null;
+    google_maps_url: string | null;
   };
   profiles: {
     name: string;
@@ -46,7 +50,7 @@ const BookingsManagement = () => {
         .from('bookings')
         .select(`
           *,
-          apartments(name, price, type, location, display_image)
+          apartments(name, price, type, location, display_image, description, rooms, bathrooms, google_maps_url)
         `)
         .order('created_at', { ascending: false });
 
@@ -95,7 +99,7 @@ const BookingsManagement = () => {
 
       if (error) throw error;
 
-      // Send status update email to client
+      // Send status update email to client with full apartment details
       try {
         await supabase.functions.invoke('send-booking-status-email', {
           body: {
@@ -105,6 +109,11 @@ const BookingsManagement = () => {
             apartmentName: booking.apartments.name,
             apartmentLocation: booking.apartments.location,
             apartmentImage: booking.apartments.display_image || '',
+            apartmentDescription: booking.apartments.description || '',
+            apartmentRooms: booking.apartments.rooms || 1,
+            apartmentBathrooms: booking.apartments.bathrooms,
+            apartmentPrice: booking.apartments.price,
+            apartmentGoogleMapsUrl: booking.apartments.google_maps_url,
             checkInDate: booking.check_in_date ? format(new Date(booking.check_in_date), 'PPP') : 'Not specified',
             checkInTime: booking.check_in_time || 'Not specified',
             nights: booking.nights || 1,
