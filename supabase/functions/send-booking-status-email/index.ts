@@ -13,6 +13,11 @@ interface StatusEmailRequest {
   apartmentName: string;
   apartmentLocation: string;
   apartmentImage: string;
+  apartmentDescription: string;
+  apartmentRooms: number;
+  apartmentBathrooms: number | null;
+  apartmentPrice: number;
+  apartmentGoogleMapsUrl: string | null;
   checkInDate: string;
   checkInTime: string;
   nights: number;
@@ -34,6 +39,11 @@ const handler = async (req: Request): Promise<Response> => {
       apartmentName,
       apartmentLocation,
       apartmentImage,
+      apartmentDescription,
+      apartmentRooms,
+      apartmentBathrooms,
+      apartmentPrice,
+      apartmentGoogleMapsUrl,
       checkInDate,
       checkInTime,
       nights,
@@ -69,6 +79,68 @@ const handler = async (req: Request): Promise<Response> => {
       ? 'Great news! Your booking has been approved. We look forward to hosting you!'
       : 'We regret to inform you that your booking could not be approved at this time. Please contact us for more information.';
 
+    // Generate Google Maps link button if URL is available
+    const directionsSection = isApproved && apartmentGoogleMapsUrl ? `
+      <div style="background-color: #EFF6FF; border-radius: 8px; padding: 20px; margin-bottom: 25px; text-align: center;">
+        <h3 style="color: #1E40AF; font-size: 18px; margin: 0 0 10px 0;">📍 How to Find Us</h3>
+        <p style="color: #374151; font-size: 14px; margin: 0 0 15px 0;">Use the link below to get directions to your accommodation:</p>
+        <a href="${apartmentGoogleMapsUrl}" target="_blank" style="display: inline-block; background: linear-gradient(135deg, #0891B2 0%, #164E63 100%); color: #ffffff; padding: 12px 30px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px;">
+          🗺️ Get Directions on Google Maps
+        </a>
+        <p style="color: #6B7280; font-size: 12px; margin: 15px 0 0 0;">Click the button above to open Google Maps with directions to ${apartmentName}</p>
+      </div>
+    ` : '';
+
+    // Apartment details section for approved bookings
+    const apartmentDetailsSection = isApproved ? `
+      <div style="background-color: #F0FDF4; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
+        <h3 style="color: #166534; font-size: 18px; margin: 0 0 15px 0; border-bottom: 2px solid #22C55E; padding-bottom: 10px;">🏠 Your Accommodation Details</h3>
+        
+        <table width="100%" cellpadding="8" cellspacing="0">
+          <tr>
+            <td style="color: #6B7280; font-size: 14px; border-bottom: 1px solid #D1FAE5;">Property Name:</td>
+            <td style="color: #111827; font-size: 14px; font-weight: 600; border-bottom: 1px solid #D1FAE5; text-align: right;">${apartmentName}</td>
+          </tr>
+          <tr>
+            <td style="color: #6B7280; font-size: 14px; border-bottom: 1px solid #D1FAE5;">Location:</td>
+            <td style="color: #111827; font-size: 14px; border-bottom: 1px solid #D1FAE5; text-align: right;">${apartmentLocation}</td>
+          </tr>
+          <tr>
+            <td style="color: #6B7280; font-size: 14px; border-bottom: 1px solid #D1FAE5;">Bedrooms:</td>
+            <td style="color: #111827; font-size: 14px; border-bottom: 1px solid #D1FAE5; text-align: right;">${apartmentRooms} Bedroom${apartmentRooms > 1 ? 's' : ''}</td>
+          </tr>
+          ${apartmentBathrooms ? `
+          <tr>
+            <td style="color: #6B7280; font-size: 14px; border-bottom: 1px solid #D1FAE5;">Bathrooms:</td>
+            <td style="color: #111827; font-size: 14px; border-bottom: 1px solid #D1FAE5; text-align: right;">${apartmentBathrooms} Bathroom${apartmentBathrooms > 1 ? 's' : ''}</td>
+          </tr>
+          ` : ''}
+          <tr>
+            <td style="color: #6B7280; font-size: 14px;">Price per Night:</td>
+            <td style="color: #0891B2; font-size: 14px; font-weight: 600; text-align: right;">KSh ${apartmentPrice.toLocaleString()}</td>
+          </tr>
+        </table>
+        
+        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #D1FAE5;">
+          <p style="color: #6B7280; font-size: 13px; margin: 0 0 5px 0;"><strong>About this property:</strong></p>
+          <p style="color: #374151; font-size: 13px; line-height: 1.6; margin: 0;">${apartmentDescription}</p>
+        </div>
+      </div>
+    ` : '';
+
+    // Check-in instructions for approved bookings
+    const checkInInstructions = isApproved ? `
+      <div style="background-color: #FEF3C7; border-left: 4px solid #F59E0B; padding: 15px; margin-bottom: 25px;">
+        <h4 style="color: #92400E; font-size: 16px; margin: 0 0 10px 0;">📋 Check-in Instructions</h4>
+        <ul style="color: #78350F; font-size: 14px; margin: 0; padding-left: 20px; line-height: 1.8;">
+          <li>Please arrive at <strong>${checkInTime}</strong> on <strong>${checkInDate}</strong></li>
+          <li>Contact us at <strong>transswashe@gmail.com</strong> if you need early check-in</li>
+          <li>Keep this confirmation email for your reference</li>
+          <li>Use the Google Maps link above for directions to the property</li>
+        </ul>
+      </div>
+    ` : '';
+
     // Professional email template with apartment image
     const clientEmailContent = `
       <!DOCTYPE html>
@@ -93,7 +165,7 @@ const handler = async (req: Request): Promise<Response> => {
                 <!-- Status Banner -->
                 <tr>
                   <td style="background-color: ${statusColor}; padding: 15px; text-align: center;">
-                    <h2 style="color: #ffffff; margin: 0; font-size: 20px;">Booking ${status}</h2>
+                    <h2 style="color: #ffffff; margin: 0; font-size: 20px;">Booking ${status} ${isApproved ? '✅' : '❌'}</h2>
                   </td>
                 </tr>
                 
@@ -114,7 +186,7 @@ const handler = async (req: Request): Promise<Response> => {
                     
                     <!-- Booking Details Card -->
                     <div style="background-color: #F9FAFB; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
-                      <h3 style="color: #111827; font-size: 18px; margin: 0 0 15px 0; border-bottom: 2px solid #0891B2; padding-bottom: 10px;">Booking Details</h3>
+                      <h3 style="color: #111827; font-size: 18px; margin: 0 0 15px 0; border-bottom: 2px solid #0891B2; padding-bottom: 10px;">📅 Booking Summary</h3>
                       <table width="100%" cellpadding="8" cellspacing="0">
                         <tr>
                           <td style="color: #6B7280; font-size: 14px; border-bottom: 1px solid #E5E7EB;">Property:</td>
@@ -147,11 +219,17 @@ const handler = async (req: Request): Promise<Response> => {
                       </table>
                     </div>
                     
+                    ${apartmentDetailsSection}
+                    
+                    ${directionsSection}
+                    
+                    ${checkInInstructions}
+                    
                     ${isApproved ? `
                     <!-- Contact Info for Approved -->
                     <div style="background-color: #ECFDF5; border-left: 4px solid #10B981; padding: 15px; margin-bottom: 25px;">
                       <p style="color: #065F46; font-size: 14px; margin: 0;">
-                        <strong>Next Steps:</strong> Please save this email for your records. We will contact you closer to your check-in date with additional details.
+                        <strong>Need Assistance?</strong> Contact us at <a href="mailto:transswashe@gmail.com" style="color: #0891B2;">transswashe@gmail.com</a> or call us. We're here to help make your stay perfect!
                       </p>
                     </div>
                     ` : `

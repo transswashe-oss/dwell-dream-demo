@@ -14,9 +14,12 @@ import { supabase } from "@/integrations/supabase/client";
 interface Profile {
   id: string;
   name: string;
-  phone?: string;
-  is_admin: boolean;
+  email?: string | null;
+  phone?: string | null;
+  user_id: string;
+  is_admin?: boolean | null;
   created_at: string;
+  updated_at: string;
 }
 
 const Profile = () => {
@@ -169,7 +172,7 @@ const Profile = () => {
                     <div className="space-y-2">
                       <Label>Account Type</Label>
                       <div className="flex items-center h-10 px-3 py-2 border border-input bg-muted rounded-md">
-                        {profile.is_admin ? 'Administrator' : 'Regular User'}
+                        {profile.is_admin === true ? 'Administrator' : 'Regular User'}
                       </div>
                     </div>
                   </div>
