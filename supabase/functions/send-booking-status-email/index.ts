@@ -27,11 +27,16 @@ interface StatusEmailRequest {
 }
 
 const handler = async (req: Request): Promise<Response> => {
+  console.log("send-booking-status-email function called");
+  
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    const requestBody = await req.json();
+    console.log("Request body received:", JSON.stringify(requestBody));
+    
     const {
       clientEmail,
       clientName,
@@ -50,12 +55,15 @@ const handler = async (req: Request): Promise<Response> => {
       totalAmount,
       transactionCode,
       status,
-    }: StatusEmailRequest = await req.json();
+    }: StatusEmailRequest = requestBody;
 
     console.log("Sending status update email:", { clientEmail, apartmentName, status });
 
     const gmailUser = Deno.env.get("GMAIL_USER");
     const gmailPassword = Deno.env.get("GMAIL_APP_PASSWORD");
+
+    console.log("Gmail user configured:", !!gmailUser);
+    console.log("Gmail password configured:", !!gmailPassword);
 
     if (!gmailUser || !gmailPassword) {
       throw new Error("Gmail credentials not configured");
@@ -157,7 +165,7 @@ const handler = async (req: Request): Promise<Response> => {
                 <!-- Header -->
                 <tr>
                   <td style="background: linear-gradient(135deg, #0891B2 0%, #164E63 100%); padding: 30px; text-align: center;">
-                    <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: bold;">StayMombasa</h1>
+                    <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: bold;">Nyali Reef Airbnb</h1>
                     <p style="color: #E0F2FE; margin: 10px 0 0 0; font-size: 14px;">Your Coastal Getaway Awaits</p>
                   </td>
                 </tr>
@@ -241,14 +249,14 @@ const handler = async (req: Request): Promise<Response> => {
                     </div>
                     `}
                     
-                    <p style="color: #6B7280; font-size: 14px; margin: 0;">Thank you for choosing StayMombasa!</p>
+                    <p style="color: #6B7280; font-size: 14px; margin: 0;">Thank you for choosing Nyali Reef Airbnb!</p>
                   </td>
                 </tr>
                 
                 <!-- Footer -->
                 <tr>
                   <td style="background-color: #1F2937; padding: 25px; text-align: center;">
-                    <p style="color: #9CA3AF; font-size: 12px; margin: 0 0 10px 0;">StayMombasa - Your Coastal Getaway</p>
+                    <p style="color: #9CA3AF; font-size: 12px; margin: 0 0 10px 0;">Nyali Reef Airbnb - Your Coastal Getaway</p>
                     <p style="color: #6B7280; font-size: 11px; margin: 0;">Mombasa, Kenya | transswashe@gmail.com</p>
                   </td>
                 </tr>
@@ -260,11 +268,13 @@ const handler = async (req: Request): Promise<Response> => {
       </html>
     `;
 
+    console.log("Attempting to send email to:", clientEmail);
+
     // Send email to client
     await client.send({
-      from: gmailUser,
+      from: `Nyali Reef Airbnb <${gmailUser}>`,
       to: clientEmail,
-      subject: `Booking ${status} - ${apartmentName} | StayMombasa`,
+      subject: `Booking ${status} - ${apartmentName} | Nyali Reef Airbnb`,
       content: `Your booking for ${apartmentName} has been ${status.toLowerCase()}.`,
       html: clientEmailContent,
     });
@@ -273,7 +283,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send notification to admin
     const adminEmailContent = `
-      <h2>Booking Status Updated - StayMombasa</h2>
+      <h2>Booking Status Updated - Nyali Reef Airbnb</h2>
       <p>A booking has been <strong style="color: ${statusColor}">${status}</strong>:</p>
       <table style="border-collapse: collapse; width: 100%; max-width: 500px;">
         <tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>Client Name:</strong></td><td style="padding: 8px; border: 1px solid #ddd;">${clientName}</td></tr>
@@ -286,7 +296,7 @@ const handler = async (req: Request): Promise<Response> => {
     `;
 
     await client.send({
-      from: gmailUser,
+      from: `Nyali Reef Airbnb <${gmailUser}>`,
       to: gmailUser,
       subject: `Booking ${status}: ${apartmentName} - ${clientName}`,
       content: `Booking ${status}`,
