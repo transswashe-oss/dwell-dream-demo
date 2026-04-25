@@ -14,7 +14,6 @@ interface Apartment {
   price: number;
   rooms: number;
   bathrooms: number;
-  square_feet: number;
   display_image?: string;
 }
 
@@ -145,10 +144,6 @@ const FeaturedProperties = () => {
                   <div className="flex items-center">
                     <Bath className="h-4 w-4 mr-1" />
                     <span>{apartment.bathrooms} baths</span>
-                  </div>
-                  <div className="flex items-center">
-                    <Square className="h-4 w-4 mr-1" />
-                    <span>{apartment.square_feet} sqft</span>
                   </div>
                 </div>
                 
