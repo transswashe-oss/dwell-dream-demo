@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Waves } from "lucide-react";
+import logo from "@/assets/logo.png";
 
 const Auth = () => {
   const { user, signUp, signIn } = useAuth();
@@ -77,9 +77,9 @@ const Auth = () => {
     <div className="min-h-screen flex items-center justify-center p-4 ocean-gradient">
       <Card className="w-full max-w-md shadow-coastal">
         <CardHeader className="text-center">
-          <div className="flex items-center justify-center mb-4">
-            <Waves className="h-8 w-8 text-primary mr-2" />
-            <span className="text-2xl font-bold">StayMombasa</span>
+          <div className="flex flex-col items-center justify-center mb-4">
+            <img src={logo} alt="Nyali Shore Real Estate logo" className="h-20 w-20 object-contain mb-2" />
+            <span className="text-2xl font-bold text-primary">Nyali Shore Real Estate</span>
           </div>
           <CardTitle>Welcome</CardTitle>
           <CardDescription>
