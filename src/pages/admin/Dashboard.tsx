@@ -22,6 +22,7 @@ import { supabase } from "@/integrations/supabase/client";
 import ApartmentsManagement from "./ApartmentsManagement";
 import BookingsManagement from "./BookingsManagement";
 import MessagesManagement from "./MessagesManagement";
+import PromotionsManagement from "./PromotionsManagement";
 
 interface DashboardStats {
   totalApartments: number;
@@ -373,6 +374,14 @@ const AdminDashboard = () => {
               Messages
             </Button>
           </Link>
+          <Link to="/admin/promotions">
+            <Button 
+              variant={location.pathname === '/admin/promotions' ? 'default' : 'outline'}
+              className="whitespace-nowrap"
+            >
+              Promotions
+            </Button>
+          </Link>
         </div>
 
         {/* Dashboard Content */}
@@ -381,6 +390,7 @@ const AdminDashboard = () => {
           <Route path="/apartments" element={<ApartmentsManagement />} />
           <Route path="/bookings" element={<BookingsManagement />} />
           <Route path="/messages" element={<MessagesManagement />} />
+          <Route path="/promotions" element={<PromotionsManagement />} />
           <Route path="*" element={<AdminOverview />} />
         </Routes>
       </div>

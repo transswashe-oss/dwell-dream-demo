@@ -17,21 +17,25 @@ const ContactSection = () => {
     const formData = new FormData(e.currentTarget);
     const name = `${formData.get('firstName')} ${formData.get('lastName')}`;
     
+    const messagePayload = {
+      name,
+      email: formData.get('email') as string,
+      phone: formData.get('phone') as string,
+      message: formData.get('message') as string,
+    };
+
     try {
-      const { error } = await supabase
-        .from('messages')
-        .insert({
-          name,
-          email: formData.get('email') as string,
-          phone: formData.get('phone') as string,
-          message: formData.get('message') as string,
-        });
+      const { error } = await supabase.from('messages').insert(messagePayload);
 
       if (error) throw error;
 
+      // Notify admin via email (best effort)
+      supabase.functions.invoke('send-contact-email', { body: messagePayload })
+        .catch((err) => console.error('Contact email error:', err));
+
       toast({
         title: "Message sent!",
-        description: "We'll get back to you soon.",
+        description: "We'll get back to you within 24 hours.",
       });
 
       e.currentTarget.reset();
@@ -66,7 +70,7 @@ const ContactSection = () => {
                 </div>
                 <div>
                   <h3 className="font-semibold text-foreground">Phone</h3>
-                  <p className="text-muted-foreground">(555) 123-4567</p>
+                  <a href="tel:+254725409996" className="text-muted-foreground hover:text-primary transition-colors">+254 725 409 996</a>
                 </div>
               </div>
               
@@ -76,7 +80,7 @@ const ContactSection = () => {
                 </div>
                 <div>
                   <h3 className="font-semibold text-foreground">Email</h3>
-                  <p className="text-muted-foreground">info@staymombasa.com</p>
+                  <a href="mailto:omaryw003@gmail.com" className="text-muted-foreground hover:text-primary transition-colors">omaryw003@gmail.com</a>
                 </div>
               </div>
               
@@ -86,7 +90,7 @@ const ContactSection = () => {
                 </div>
                 <div>
                   <h3 className="font-semibold text-foreground">Office</h3>
-                  <p className="text-muted-foreground">Mombasa, Kenya</p>
+                  <p className="text-muted-foreground">Nyali, Mombasa, Kenya</p>
                 </div>
               </div>
               

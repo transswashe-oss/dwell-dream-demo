@@ -178,6 +178,60 @@ export type Database = {
         }
         Relationships: []
       }
+      promotional_messages: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          recipient_count: number
+          sent: boolean
+          sent_at: string | null
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          recipient_count?: number
+          sent?: boolean
+          sent_at?: string | null
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          recipient_count?: number
+          sent?: boolean
+          sent_at?: string | null
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      subscribers: {
+        Row: {
+          active: boolean
+          created_at: string
+          email: string
+          id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          email: string
+          id?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          email?: string
+          id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string

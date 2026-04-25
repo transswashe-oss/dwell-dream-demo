@@ -1,7 +1,8 @@
 import { Button } from "@/components/ui/button";
-import { Waves, LogOut, User, Settings } from "lucide-react";
+import { LogOut, User, Settings } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import logo from "@/assets/logo.png";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,12 +27,12 @@ const Navigation = () => {
 
   return (
     <nav className="bg-card/95 backdrop-blur-sm border-b border-border sticky top-0 z-50 shadow-coastal">
-      <div className="container mx-auto px-4 py-4">
+      <div className="container mx-auto px-4 py-3">
         <div className="flex items-center justify-between">
-          <Link to="/" className="flex items-center space-x-2">
-            <Waves className="h-8 w-8 text-primary" />
-            <span className="text-2xl font-bold ocean-gradient bg-clip-text text-transparent">
-              StayMombasa
+          <Link to="/" className="flex items-center space-x-3">
+            <img src={logo} alt="Nyali Shore Real Estate logo" className="h-12 w-12 object-contain" />
+            <span className="text-xl md:text-2xl font-bold ocean-gradient bg-clip-text text-transparent leading-tight">
+              Nyali Shore<br className="md:hidden" /><span className="hidden md:inline"> </span>Real Estate
             </span>
           </Link>
           
@@ -62,13 +63,11 @@ const Navigation = () => {
           <div className="flex items-center space-x-4">
             {user ? (
               <>
-                {user && (
-                  <Link to="/my-bookings">
-                    <Button variant="outline" className="hidden sm:flex">
-                      My Bookings
-                    </Button>
-                  </Link>
-                )}
+                <Link to="/my-bookings">
+                  <Button variant="outline" className="hidden sm:flex">
+                    My Bookings
+                  </Button>
+                </Link>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon">
