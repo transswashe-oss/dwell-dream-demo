@@ -26,12 +26,12 @@ const ContactSection = () => {
     };
 
     try {
-      const { error } = await supabase.from('messages').insert(messagePayload);
+      const { data: inserted, error } = await supabase.from('messages').insert(messagePayload).select('id').single();
 
       if (error) throw error;
 
       // Notify admin via email (best effort)
-      supabase.functions.invoke('send-contact-email', { body: messagePayload })
+      supabase.functions.invoke('send-contact-email', { body: { ...messagePayload, message_id: inserted?.id } })
         .catch((err) => console.error('Contact email error:', err));
 
       toast({

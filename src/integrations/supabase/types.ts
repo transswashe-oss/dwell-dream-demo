@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_allowlist: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+        }
+        Relationships: []
+      }
       apartments: {
         Row: {
           bathrooms: number
@@ -114,6 +132,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      email_logs: {
+        Row: {
+          created_at: string
+          error: string | null
+          id: string
+          recipient: string
+          related_id: string | null
+          status: string
+          subject: string
+          template: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          error?: string | null
+          id?: string
+          recipient: string
+          related_id?: string | null
+          status?: string
+          subject: string
+          template: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          error?: string | null
+          id?: string
+          recipient?: string
+          related_id?: string | null
+          status?: string
+          subject?: string
+          template?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       messages: {
         Row: {
@@ -265,6 +319,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_email_allowlisted: { Args: { _email: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "user"
