@@ -12,9 +12,10 @@ const ContactSection = () => {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const form = e.currentTarget;
     setSubmitting(true);
 
-    const formData = new FormData(e.currentTarget);
+    const formData = new FormData(form);
     const name = `${formData.get('firstName')} ${formData.get('lastName')}`;
     
     const messagePayload = {
@@ -38,7 +39,7 @@ const ContactSection = () => {
         description: "We'll get back to you within 24 hours.",
       });
 
-      e.currentTarget.reset();
+      form.reset();
     } catch (error: any) {
       console.error('Error sending message:', error);
       toast({
