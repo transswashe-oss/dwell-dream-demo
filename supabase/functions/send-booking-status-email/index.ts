@@ -107,6 +107,9 @@ serve(async (req) => {
         ${apartmentDetailsHtml}
         ${directionsHtml}
         ${checkInHtml}
+        <p style="text-align:center;margin:24px 0;">
+          <a href="${BRAND.siteUrl}/my-bookings" style="display:inline-block;background:#0891B2;background-image:linear-gradient(135deg,#0891B2 0%,#164E63 100%);color:#ffffff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold;">View My Bookings →</a>
+        </p>
         <div style="background:${isApproved ? '#ECFDF5' : '#FEF2F2'};border-left:4px solid ${isApproved ? '#10B981' : '#EF4444'};padding:14px;margin-top:20px;border-radius:4px;">
           <p style="margin:0;color:${isApproved ? '#065F46' : '#991B1B'};font-size:14px;">
             <strong>${isApproved ? 'Need anything?' : 'Need help?'}</strong> Contact us at <a href="mailto:${BRAND.adminEmail}" style="color:#0891B2;">${BRAND.adminEmail}</a> or ${BRAND.contactPhone}.

@@ -46,6 +46,7 @@ export type Database = {
           name: string
           price: number
           rooms: number
+          square_feet: number | null
           type: string
           updated_at: string
         }
@@ -62,6 +63,7 @@ export type Database = {
           name: string
           price?: number
           rooms?: number
+          square_feet?: number | null
           type?: string
           updated_at?: string
         }
@@ -78,6 +80,7 @@ export type Database = {
           name?: string
           price?: number
           rooms?: number
+          square_feet?: number | null
           type?: string
           updated_at?: string
         }
@@ -283,6 +286,45 @@ export type Database = {
           created_at?: string
           email?: string
           id?: string
+        }
+        Relationships: []
+      }
+      testimonials: {
+        Row: {
+          approved: boolean
+          avatar_initial: string | null
+          created_at: string
+          id: string
+          location: string | null
+          message: string
+          name: string
+          rating: number
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          approved?: boolean
+          avatar_initial?: string | null
+          created_at?: string
+          id?: string
+          location?: string | null
+          message: string
+          name: string
+          rating?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          approved?: boolean
+          avatar_initial?: string | null
+          created_at?: string
+          id?: string
+          location?: string | null
+          message?: string
+          name?: string
+          rating?: number
+          updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }

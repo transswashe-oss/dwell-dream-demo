@@ -18,6 +18,7 @@ interface Apartment {
   location: string;
   price: number;
   rooms: number;
+  bathrooms: number;
   description: string;
   display_image?: string;
   gallery_images?: string[];
@@ -109,17 +110,22 @@ const ApartmentsManagement = () => {
       }
     
       const apartmentData = {
-        name: formData.get('name') as string,
+        name: (formData.get('name') as string)?.trim(),
         type: 'Airbnb',
-        location: formData.get('location') as string,
-        price: parseFloat(formData.get('price') as string),
-        rooms: parseInt(formData.get('rooms') as string),
-        description: formData.get('description') as string,
+        location: (formData.get('location') as string)?.trim(),
+        price: parseFloat(formData.get('price') as string) || 0,
+        rooms: parseInt(formData.get('rooms') as string) || 1,
+        bathrooms: parseInt(formData.get('bathrooms') as string) || 1,
+        description: (formData.get('description') as string)?.trim() || null,
         display_image: displayImageUrl || null,
         gallery_images: galleryImageUrls.length > 0 ? galleryImageUrls : null,
         featured: formData.get('featured') === 'on',
-        google_maps_url: formData.get('google_maps_url') as string || null,
+        google_maps_url: (formData.get('google_maps_url') as string)?.trim() || null,
       };
+
+      if (!apartmentData.name || !apartmentData.location) {
+        throw new Error("Name and location are required.");
+      }
 
       if (editingApartment) {
         const { error } = await supabase
@@ -235,29 +241,18 @@ const ApartmentsManagement = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="price">Price per Night (KSh) *</Label>
-                  <Input
-                    id="price"
-                    name="price"
-                    type="number"
-                    defaultValue={editingApartment?.price}
-                    required
-                    placeholder="e.g., 5000"
-                  />
+                  <Label htmlFor="price">Price/Night (KSh) *</Label>
+                  <Input id="price" name="price" type="number" min="0" step="100" defaultValue={editingApartment?.price} required placeholder="5000" />
                 </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="rooms">Bedrooms *</Label>
-                  <Input
-                    id="rooms"
-                    name="rooms"
-                    type="number"
-                    defaultValue={editingApartment?.rooms}
-                    required
-                    min="1"
-                  />
+                  <Input id="rooms" name="rooms" type="number" defaultValue={editingApartment?.rooms ?? 1} required min="1" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="bathrooms">Bathrooms *</Label>
+                  <Input id="bathrooms" name="bathrooms" type="number" defaultValue={editingApartment?.bathrooms ?? 1} required min="1" />
                 </div>
               </div>
 
@@ -273,12 +268,11 @@ const ApartmentsManagement = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description">Description *</Label>
+                <Label htmlFor="description">Description</Label>
                 <Textarea
                   id="description"
                   name="description"
                   defaultValue={editingApartment?.description}
-                  required
                   rows={4}
                   placeholder="Describe the apartment..."
                 />

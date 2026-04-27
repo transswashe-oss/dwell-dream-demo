@@ -35,7 +35,7 @@ serve(async (req) => {
           <li>💸 Receive exclusive subscriber-only offers and discounts</li>
         </ul>
         <p style="text-align:center;margin:28px 0;">
-          <a href="https://dwell-dream-demo.lovable.app/apartments" style="display:inline-block;background:linear-gradient(135deg,#0891B2 0%,#164E63 100%);color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold;">Explore Apartments →</a>
+          <a href="${BRAND.siteUrl}/apartments" style="display:inline-block;background:#0891B2;background-image:linear-gradient(135deg,#0891B2 0%,#164E63 100%);color:#ffffff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold;">Explore Apartments →</a>
         </p>
         <p>Need help? Reply to this email or reach us at ${BRAND.contactPhone}.</p>
         <p>See you on the shore,<br/>The ${BRAND.name} Team</p>
