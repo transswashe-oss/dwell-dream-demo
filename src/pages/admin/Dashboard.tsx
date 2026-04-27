@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
-import { useAuth } from "@/hooks/useAuth";
-import { Navigate, Routes, Route, Link, useLocation } from "react-router-dom";
+import { Routes, Route, Link, useLocation } from "react-router-dom";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -308,86 +307,8 @@ const AdminOverview = () => {
   );
 };
 
-const PIN_SESSION_KEY = "admin_pin_ok";
-
 const AdminDashboard = () => {
-  const { user, isAdmin, loading } = useAuth();
   const location = useLocation();
-  const [pinOk, setPinOk] = useState<boolean>(() => sessionStorage.getItem(PIN_SESSION_KEY) === "1");
-  const [pin, setPin] = useState("");
-  const [verifying, setVerifying] = useState(false);
-  const [pinError, setPinError] = useState<string | null>(null);
-
-  const handleVerifyPin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setVerifying(true);
-    setPinError(null);
-    try {
-      const { data, error } = await supabase.functions.invoke("verify-admin-pin", { body: { pin } });
-      if (error) throw error;
-      if (data?.ok) {
-        sessionStorage.setItem(PIN_SESSION_KEY, "1");
-        setPinOk(true);
-      } else {
-        setPinError("Incorrect PIN");
-      }
-    } catch (err: any) {
-      setPinError(err.message || "Verification failed");
-    } finally {
-      setVerifying(false);
-      setPin("");
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen">
-        <Navigation />
-        <div className="container mx-auto px-4 py-20 text-center">
-          Loading...
-        </div>
-        <Footer />
-      </div>
-    );
-  }
-
-  if (!user || !isAdmin) {
-    return <Navigate to="/" replace />;
-  }
-
-  if (!pinOk) {
-    return (
-      <div className="min-h-screen">
-        <Navigation />
-        <div className="container mx-auto px-4 py-20 max-w-md">
-          <Card className="shadow-coastal">
-            <CardHeader>
-              <CardTitle>Admin PIN Required</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleVerifyPin} className="space-y-4">
-                <input
-                  type="password"
-                  inputMode="numeric"
-                  autoFocus
-                  value={pin}
-                  onChange={(e) => setPin(e.target.value)}
-                  placeholder="Enter admin PIN"
-                  className="w-full px-3 py-2 border rounded-md bg-background"
-                  required
-                />
-                {pinError && <p className="text-sm text-destructive">{pinError}</p>}
-                <Button type="submit" className="w-full" disabled={verifying || !pin}>
-                  {verifying ? "Verifying..." : "Unlock"}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
-        <Footer />
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen">
