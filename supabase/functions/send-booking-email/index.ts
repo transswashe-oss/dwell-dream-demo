@@ -77,6 +77,9 @@ const handler = async (req: Request): Promise<Response> => {
             <p style="margin:0;color:#92400E;"><strong>Status:</strong> Pending — Your payment is being verified.</p>
           </div>
           <p style="margin-top:16px;">You'll receive another email as soon as your booking is approved with directions and check-in instructions.</p>
+          <p style="text-align:center;margin:24px 0;">
+            <a href="${BRAND.siteUrl}/my-bookings" style="display:inline-block;background:#0891B2;background-image:linear-gradient(135deg,#0891B2 0%,#164E63 100%);color:#ffffff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold;">View My Bookings →</a>
+          </p>
           <p>Thank you for choosing ${BRAND.name}!</p>
         `,
       }),
