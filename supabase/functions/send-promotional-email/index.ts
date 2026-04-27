@@ -47,7 +47,7 @@ serve(async (req) => {
       bodyHtml: `
         <div style="font-size:15px;line-height:1.7;color:#374151;">${body}</div>
         <p style="text-align:center;margin:28px 0;">
-          <a href="https://dwell-dream-demo.lovable.app/apartments" style="display:inline-block;background:linear-gradient(135deg,#0891B2 0%,#164E63 100%);color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold;">Browse Apartments →</a>
+          <a href="${BRAND.siteUrl}/apartments" style="display:inline-block;background:#0891B2;background-image:linear-gradient(135deg,#0891B2 0%,#164E63 100%);color:#ffffff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold;">Browse Apartments →</a>
         </p>
         <hr style="border:none;border-top:1px solid #E5E7EB;margin:24px 0;" />
         <p style="font-size:12px;color:#9CA3AF;text-align:center;">You're receiving this because you subscribed to ${BRAND.name} offers. To unsubscribe, reply with "unsubscribe".</p>
