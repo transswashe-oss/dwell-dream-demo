@@ -227,8 +227,8 @@ const ApartmentDetails = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen">
-        <Navigation />
+    <div className="min-h-screen page-bg">
+      <Navigation />
         <div className="container mx-auto px-4 py-20 text-center">
           Loading apartment details...
         </div>
@@ -341,8 +341,15 @@ const ApartmentDetails = () => {
                   <span>{apartment.location}</span>
                 </div>
 
-                <div className="text-4xl font-bold text-primary mb-6">
-                  KSh {apartment.price.toLocaleString()}/night
+                <div className="mb-6 space-y-1">
+                  <div className="text-4xl font-bold text-primary">
+                    KSh {apartment.price.toLocaleString()}<span className="text-lg font-normal text-muted-foreground">/night</span>
+                  </div>
+                  {apartment.monthly_price && apartment.monthly_price > 0 && (
+                    <div className="text-2xl font-semibold text-accent">
+                      KSh {apartment.monthly_price.toLocaleString()}<span className="text-base font-normal text-muted-foreground">/month (rental)</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Property Details */}
@@ -379,7 +386,25 @@ const ApartmentDetails = () => {
                         </div>
                         
                         <div className="space-y-2">
-                          <Label>Check-in Date *</Label>
+                          <Label>Booking Type *</Label>
+                          <Select value={bookingType} onValueChange={(v) => setBookingType(v as BookingType)}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="per_night">Per Night (Short Stay)</SelectItem>
+                              <SelectItem
+                                value="monthly"
+                                disabled={!apartment.monthly_price || apartment.monthly_price <= 0}
+                              >
+                                Per Month (Rental){(!apartment.monthly_price || apartment.monthly_price <= 0) ? " — unavailable" : ""}
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>{bookingType === 'monthly' ? 'Move-in Date *' : 'Check-in Date *'}</Label>
                           <Popover>
                             <PopoverTrigger asChild>
                               <Button
@@ -421,23 +446,35 @@ const ApartmentDetails = () => {
                           </Select>
                         </div>
 
-                        <div className="space-y-2">
-                          <Label>Number of Nights *</Label>
-                          <div className="flex items-center gap-2">
-                            <Moon className="h-4 w-4 text-muted-foreground" />
+                        {bookingType === 'per_night' ? (
+                          <div className="space-y-2">
+                            <Label>Number of Nights *</Label>
+                            <div className="flex items-center gap-2">
+                              <Moon className="h-4 w-4 text-muted-foreground" />
+                              <Input
+                                type="number"
+                                min="1"
+                                value={nights}
+                                onChange={(e) => setNights(Math.max(1, parseInt(e.target.value) || 1))}
+                                className="flex-1"
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <Label>Number of Months *</Label>
                             <Input
                               type="number"
                               min="1"
-                              value={nights}
-                              onChange={(e) => setNights(Math.max(1, parseInt(e.target.value) || 1))}
-                              className="flex-1"
+                              value={months}
+                              onChange={(e) => setMonths(Math.max(1, parseInt(e.target.value) || 1))}
                             />
                           </div>
-                        </div>
+                        )}
 
                         <div className="bg-secondary/50 p-4 rounded-lg">
                           <div className="flex justify-between mb-2">
-                            <span>KSh {apartment.price.toLocaleString()} x {nights} night{nights > 1 ? 's' : ''}</span>
+                            <span>KSh {unitPrice.toLocaleString()} x {duration} {bookingType === 'monthly' ? 'month' : 'night'}{duration > 1 ? 's' : ''}</span>
                             <span>KSh {totalAmount.toLocaleString()}</span>
                           </div>
                           <div className="flex justify-between font-bold text-lg border-t pt-2">
