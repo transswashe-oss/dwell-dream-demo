@@ -25,6 +25,7 @@ interface Apartment {
   type: string;
   location: string;
   price: number;
+  monthly_price?: number;
   rooms: number;
   bathrooms?: number;
   square_feet?: number;
@@ -33,7 +34,10 @@ interface Apartment {
   gallery_images?: string[];
   featured: boolean;
   google_maps_url?: string;
+  unit_number?: string;
 }
+
+type BookingType = "per_night" | "monthly";
 
 const ApartmentDetails = () => {
   const { id } = useParams();
@@ -47,9 +51,11 @@ const ApartmentDetails = () => {
   const [lightboxIndex, setLightboxIndex] = useState(0);
   
   // Booking form state
+  const [bookingType, setBookingType] = useState<BookingType>("per_night");
   const [checkInDate, setCheckInDate] = useState<Date | undefined>();
   const [checkInTime, setCheckInTime] = useState("14:00");
   const [nights, setNights] = useState(1);
+  const [months, setMonths] = useState(1);
 
   useEffect(() => {
     if (id) {
@@ -79,10 +85,14 @@ const ApartmentDetails = () => {
     }
   };
 
-  const totalAmount = useMemo(() => {
+  const unitPrice = useMemo(() => {
     if (!apartment) return 0;
-    return apartment.price * nights;
-  }, [apartment, nights]);
+    return bookingType === "monthly" ? (apartment.monthly_price || 0) : apartment.price;
+  }, [apartment, bookingType]);
+
+  const duration = bookingType === "monthly" ? months : nights;
+
+  const totalAmount = useMemo(() => unitPrice * duration, [unitPrice, duration]);
 
   const allImages = useMemo(() => {
     if (!apartment) return [];
