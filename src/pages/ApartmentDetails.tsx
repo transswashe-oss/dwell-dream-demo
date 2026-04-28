@@ -116,7 +116,7 @@ const ApartmentDetails = () => {
     const transactionCode = formData.get('transaction_code') as string;
 
     try {
-      const { error } = await supabase
+      const { data: inserted, error } = await supabase
         .from('bookings')
         .insert({
           user_id: user.id,
@@ -124,9 +124,13 @@ const ApartmentDetails = () => {
           transaction_code: transactionCode,
           check_in_date: format(checkInDate, 'yyyy-MM-dd'),
           check_in_time: checkInTime,
-          nights: nights,
+          nights: bookingType === 'per_night' ? nights : 1,
+          months: bookingType === 'monthly' ? months : null,
+          booking_type: bookingType,
           total_amount: totalAmount,
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
 
@@ -146,24 +150,51 @@ const ApartmentDetails = () => {
             apartmentLocation: apartment.location,
             checkInDate: format(checkInDate, 'PPP'),
             checkInTime: checkInTime,
-            nights: nights,
+            nights: bookingType === 'per_night' ? nights : 0,
+            months: bookingType === 'monthly' ? months : 0,
+            bookingType,
+            unitNumber: inserted?.assigned_unit_number || apartment.unit_number || '',
             totalAmount: totalAmount,
             transactionCode: transactionCode,
           },
         });
       } catch (emailError) {
         console.error('Error sending email:', emailError);
-        // Don't fail the booking if email fails
+      }
+
+      // Auto-generate PDF receipt
+      try {
+        const { generateInvoicePDF } = await import('@/lib/invoice');
+        await generateInvoicePDF({
+          bookingId: inserted?.id || crypto.randomUUID(),
+          clientName: (await supabase.from('profiles').select('name').eq('user_id', user.id).single()).data?.name || 'Guest',
+          clientEmail: user.email || '',
+          apartmentName: apartment.name,
+          apartmentLocation: apartment.location,
+          bookingType,
+          checkInDate: format(checkInDate, 'PPP'),
+          checkInTime,
+          duration,
+          unitPrice,
+          totalAmount,
+          transactionCode,
+          status: 'Pending',
+          unitNumber: inserted?.assigned_unit_number || apartment.unit_number,
+          createdAt: new Date().toISOString(),
+        });
+      } catch (pdfErr) {
+        console.error('PDF generation failed:', pdfErr);
       }
 
       toast({
         title: "Booking Submitted!",
-        description: "Your booking request has been submitted. Check your email for confirmation.",
+        description: "Receipt downloaded. Check your email for confirmation.",
       });
       
       setShowBookingDialog(false);
       setCheckInDate(undefined);
       setNights(1);
+      setMonths(1);
     } catch (error: any) {
       console.error('Error creating booking:', error);
       toast({
