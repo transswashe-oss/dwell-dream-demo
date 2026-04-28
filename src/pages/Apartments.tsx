@@ -18,10 +18,12 @@ interface Apartment {
   type: string;
   location: string;
   price: number;
+  monthly_price?: number;
   rooms: number;
   description: string;
   display_image?: string;
   featured: boolean;
+  unit_number?: string;
 }
 
 const Apartments = () => {
@@ -222,8 +224,11 @@ const Apartments = () => {
                         <span className="text-white font-medium">No Image</span>
                       </div>
                     )}
-                    <div className="absolute top-4 left-4">
-                      <Badge className="bg-primary text-primary-foreground">Airbnb</Badge>
+                    <div className="absolute top-4 left-4 flex flex-col gap-1">
+                      <Badge className="bg-primary text-primary-foreground">Short Stay</Badge>
+                      {apartment.monthly_price && apartment.monthly_price > 0 && (
+                        <Badge className="bg-accent text-accent-foreground">Rental</Badge>
+                      )}
                     </div>
                     {apartment.featured && (
                       <div className="absolute top-4 right-4">
@@ -241,9 +246,16 @@ const Apartments = () => {
                         <MapPin className="h-4 w-4 mr-1" />
                         <span className="text-sm">{apartment.location}</span>
                       </div>
-                      <p className="text-2xl font-bold text-primary mb-4">
-                        KSh {apartment.price.toLocaleString()}/night
-                      </p>
+                      <div className="space-y-1 mb-4">
+                        <p className="text-2xl font-bold text-primary">
+                          KSh {apartment.price.toLocaleString()}<span className="text-sm font-normal text-muted-foreground">/night</span>
+                        </p>
+                        {apartment.monthly_price && apartment.monthly_price > 0 && (
+                          <p className="text-lg font-semibold text-accent">
+                            KSh {apartment.monthly_price.toLocaleString()}<span className="text-sm font-normal text-muted-foreground">/month</span>
+                          </p>
+                        )}
+                      </div>
                     </div>
                     
                     <div className="flex items-center text-sm text-muted-foreground mb-6">
