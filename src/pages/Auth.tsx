@@ -66,8 +66,8 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 ocean-gradient">
-      <Card className="w-full max-w-md shadow-coastal">
+    <div className="min-h-screen flex items-center justify-center p-4 page-bg">
+      <Card className="w-full max-w-md shadow-coastal bg-card/95 backdrop-blur-md">
         <CardHeader className="text-center">
           <div className="flex flex-col items-center mb-4">
             <img src={logo} alt="Nyali Shore Real Estate" className="h-20 w-20 object-contain mb-2" />

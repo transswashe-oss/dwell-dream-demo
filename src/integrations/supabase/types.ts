@@ -43,11 +43,13 @@ export type Database = {
           google_maps_url: string | null
           id: string
           location: string
+          monthly_price: number
           name: string
           price: number
           rooms: number
           square_feet: number | null
           type: string
+          unit_number: string | null
           updated_at: string
         }
         Insert: {
@@ -60,11 +62,13 @@ export type Database = {
           google_maps_url?: string | null
           id?: string
           location: string
+          monthly_price?: number
           name: string
           price?: number
           rooms?: number
           square_feet?: number | null
           type?: string
+          unit_number?: string | null
           updated_at?: string
         }
         Update: {
@@ -77,11 +81,13 @@ export type Database = {
           google_maps_url?: string | null
           id?: string
           location?: string
+          monthly_price?: number
           name?: string
           price?: number
           rooms?: number
           square_feet?: number | null
           type?: string
+          unit_number?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -89,10 +95,13 @@ export type Database = {
       bookings: {
         Row: {
           apartment_id: string
+          assigned_unit_number: string | null
+          booking_type: string
           check_in_date: string
           check_in_time: string | null
           created_at: string
           id: string
+          months: number | null
           nights: number
           status: string
           total_amount: number
@@ -102,10 +111,13 @@ export type Database = {
         }
         Insert: {
           apartment_id: string
+          assigned_unit_number?: string | null
+          booking_type?: string
           check_in_date: string
           check_in_time?: string | null
           created_at?: string
           id?: string
+          months?: number | null
           nights?: number
           status?: string
           total_amount?: number
@@ -115,10 +127,13 @@ export type Database = {
         }
         Update: {
           apartment_id?: string
+          assigned_unit_number?: string | null
+          booking_type?: string
           check_in_date?: string
           check_in_time?: string | null
           created_at?: string
           id?: string
+          months?: number | null
           nights?: number
           status?: string
           total_amount?: number

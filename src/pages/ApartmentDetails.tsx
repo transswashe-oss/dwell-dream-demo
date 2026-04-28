@@ -25,6 +25,7 @@ interface Apartment {
   type: string;
   location: string;
   price: number;
+  monthly_price?: number;
   rooms: number;
   bathrooms?: number;
   square_feet?: number;
@@ -33,7 +34,10 @@ interface Apartment {
   gallery_images?: string[];
   featured: boolean;
   google_maps_url?: string;
+  unit_number?: string;
 }
+
+type BookingType = "per_night" | "monthly";
 
 const ApartmentDetails = () => {
   const { id } = useParams();
@@ -47,9 +51,11 @@ const ApartmentDetails = () => {
   const [lightboxIndex, setLightboxIndex] = useState(0);
   
   // Booking form state
+  const [bookingType, setBookingType] = useState<BookingType>("per_night");
   const [checkInDate, setCheckInDate] = useState<Date | undefined>();
   const [checkInTime, setCheckInTime] = useState("14:00");
   const [nights, setNights] = useState(1);
+  const [months, setMonths] = useState(1);
 
   useEffect(() => {
     if (id) {
@@ -79,10 +85,14 @@ const ApartmentDetails = () => {
     }
   };
 
-  const totalAmount = useMemo(() => {
+  const unitPrice = useMemo(() => {
     if (!apartment) return 0;
-    return apartment.price * nights;
-  }, [apartment, nights]);
+    return bookingType === "monthly" ? (apartment.monthly_price || 0) : apartment.price;
+  }, [apartment, bookingType]);
+
+  const duration = bookingType === "monthly" ? months : nights;
+
+  const totalAmount = useMemo(() => unitPrice * duration, [unitPrice, duration]);
 
   const allImages = useMemo(() => {
     if (!apartment) return [];
@@ -106,7 +116,7 @@ const ApartmentDetails = () => {
     const transactionCode = formData.get('transaction_code') as string;
 
     try {
-      const { error } = await supabase
+      const { data: inserted, error } = await supabase
         .from('bookings')
         .insert({
           user_id: user.id,
@@ -114,9 +124,13 @@ const ApartmentDetails = () => {
           transaction_code: transactionCode,
           check_in_date: format(checkInDate, 'yyyy-MM-dd'),
           check_in_time: checkInTime,
-          nights: nights,
+          nights: bookingType === 'per_night' ? nights : 1,
+          months: bookingType === 'monthly' ? months : null,
+          booking_type: bookingType,
           total_amount: totalAmount,
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
 
@@ -136,24 +150,51 @@ const ApartmentDetails = () => {
             apartmentLocation: apartment.location,
             checkInDate: format(checkInDate, 'PPP'),
             checkInTime: checkInTime,
-            nights: nights,
+            nights: bookingType === 'per_night' ? nights : 0,
+            months: bookingType === 'monthly' ? months : 0,
+            bookingType,
+            unitNumber: inserted?.assigned_unit_number || apartment.unit_number || '',
             totalAmount: totalAmount,
             transactionCode: transactionCode,
           },
         });
       } catch (emailError) {
         console.error('Error sending email:', emailError);
-        // Don't fail the booking if email fails
+      }
+
+      // Auto-generate PDF receipt
+      try {
+        const { generateInvoicePDF } = await import('@/lib/invoice');
+        await generateInvoicePDF({
+          bookingId: inserted?.id || crypto.randomUUID(),
+          clientName: (await supabase.from('profiles').select('name').eq('user_id', user.id).single()).data?.name || 'Guest',
+          clientEmail: user.email || '',
+          apartmentName: apartment.name,
+          apartmentLocation: apartment.location,
+          bookingType,
+          checkInDate: format(checkInDate, 'PPP'),
+          checkInTime,
+          duration,
+          unitPrice,
+          totalAmount,
+          transactionCode,
+          status: 'Pending',
+          unitNumber: inserted?.assigned_unit_number || apartment.unit_number,
+          createdAt: new Date().toISOString(),
+        });
+      } catch (pdfErr) {
+        console.error('PDF generation failed:', pdfErr);
       }
 
       toast({
         title: "Booking Submitted!",
-        description: "Your booking request has been submitted. Check your email for confirmation.",
+        description: "Receipt downloaded. Check your email for confirmation.",
       });
       
       setShowBookingDialog(false);
       setCheckInDate(undefined);
       setNights(1);
+      setMonths(1);
     } catch (error: any) {
       console.error('Error creating booking:', error);
       toast({
@@ -186,8 +227,8 @@ const ApartmentDetails = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen">
-        <Navigation />
+    <div className="min-h-screen page-bg">
+      <Navigation />
         <div className="container mx-auto px-4 py-20 text-center">
           Loading apartment details...
         </div>
@@ -300,8 +341,15 @@ const ApartmentDetails = () => {
                   <span>{apartment.location}</span>
                 </div>
 
-                <div className="text-4xl font-bold text-primary mb-6">
-                  KSh {apartment.price.toLocaleString()}/night
+                <div className="mb-6 space-y-1">
+                  <div className="text-4xl font-bold text-primary">
+                    KSh {apartment.price.toLocaleString()}<span className="text-lg font-normal text-muted-foreground">/night</span>
+                  </div>
+                  {apartment.monthly_price && apartment.monthly_price > 0 && (
+                    <div className="text-2xl font-semibold text-accent">
+                      KSh {apartment.monthly_price.toLocaleString()}<span className="text-base font-normal text-muted-foreground">/month (rental)</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Property Details */}
@@ -338,7 +386,25 @@ const ApartmentDetails = () => {
                         </div>
                         
                         <div className="space-y-2">
-                          <Label>Check-in Date *</Label>
+                          <Label>Booking Type *</Label>
+                          <Select value={bookingType} onValueChange={(v) => setBookingType(v as BookingType)}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="per_night">Per Night (Short Stay)</SelectItem>
+                              <SelectItem
+                                value="monthly"
+                                disabled={!apartment.monthly_price || apartment.monthly_price <= 0}
+                              >
+                                Per Month (Rental){(!apartment.monthly_price || apartment.monthly_price <= 0) ? " — unavailable" : ""}
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>{bookingType === 'monthly' ? 'Move-in Date *' : 'Check-in Date *'}</Label>
                           <Popover>
                             <PopoverTrigger asChild>
                               <Button
@@ -380,23 +446,35 @@ const ApartmentDetails = () => {
                           </Select>
                         </div>
 
-                        <div className="space-y-2">
-                          <Label>Number of Nights *</Label>
-                          <div className="flex items-center gap-2">
-                            <Moon className="h-4 w-4 text-muted-foreground" />
+                        {bookingType === 'per_night' ? (
+                          <div className="space-y-2">
+                            <Label>Number of Nights *</Label>
+                            <div className="flex items-center gap-2">
+                              <Moon className="h-4 w-4 text-muted-foreground" />
+                              <Input
+                                type="number"
+                                min="1"
+                                value={nights}
+                                onChange={(e) => setNights(Math.max(1, parseInt(e.target.value) || 1))}
+                                className="flex-1"
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <Label>Number of Months *</Label>
                             <Input
                               type="number"
                               min="1"
-                              value={nights}
-                              onChange={(e) => setNights(Math.max(1, parseInt(e.target.value) || 1))}
-                              className="flex-1"
+                              value={months}
+                              onChange={(e) => setMonths(Math.max(1, parseInt(e.target.value) || 1))}
                             />
                           </div>
-                        </div>
+                        )}
 
                         <div className="bg-secondary/50 p-4 rounded-lg">
                           <div className="flex justify-between mb-2">
-                            <span>KSh {apartment.price.toLocaleString()} x {nights} night{nights > 1 ? 's' : ''}</span>
+                            <span>KSh {unitPrice.toLocaleString()} x {duration} {bookingType === 'monthly' ? 'month' : 'night'}{duration > 1 ? 's' : ''}</span>
                             <span>KSh {totalAmount.toLocaleString()}</span>
                           </div>
                           <div className="flex justify-between font-bold text-lg border-t pt-2">

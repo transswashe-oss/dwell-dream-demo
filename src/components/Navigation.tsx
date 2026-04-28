@@ -3,6 +3,7 @@ import { LogOut, User, Settings } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import logo from "@/assets/logo.png";
+import { ThemeToggle, FontPicker } from "@/components/ThemeFontToggle";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -60,7 +61,9 @@ const Navigation = () => {
             )}
           </div>
           
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2">
+            <FontPicker />
+            <ThemeToggle />
             {user ? (
               <>
                 <Link to="/my-bookings">

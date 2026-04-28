@@ -15,6 +15,9 @@ interface BookingEmailRequest {
   checkInDate: string;
   checkInTime: string;
   nights: number;
+  months?: number;
+  bookingType?: 'per_night' | 'monthly';
+  unitNumber?: string;
   totalAmount: number;
   transactionCode: string;
 }
@@ -34,15 +37,21 @@ const handler = async (req: Request): Promise<Response> => {
       connection: { hostname: "smtp.gmail.com", port: 465, tls: true, auth: { username: gmailUser, password: gmailPassword } },
     });
 
+    const isMonthly = r.bookingType === 'monthly';
+    const durationLabel = isMonthly ? `${r.months || 1} month(s)` : `${r.nights} night(s)`;
+    const typeLabel = isMonthly ? 'Monthly Rental' : 'Per Night (Short Stay)';
+
     const detailsTable = `
       <table width="100%" cellpadding="8" cellspacing="0" style="background:#F9FAFB;border-radius:8px;">
         <tr><td style="color:#6B7280;width:160px;">Client Name:</td><td style="font-weight:600;">${escape(r.clientName)}</td></tr>
         <tr><td style="color:#6B7280;">Client Email:</td><td>${escape(r.clientEmail)}</td></tr>
-        <tr><td style="color:#6B7280;">Apartment:</td><td>${escape(r.apartmentName)}</td></tr>
+        <tr><td style="color:#6B7280;">Booking Type:</td><td><strong>${typeLabel}</strong></td></tr>
+        <tr><td style="color:#6B7280;">Property:</td><td>${escape(r.apartmentName)}</td></tr>
         <tr><td style="color:#6B7280;">Location:</td><td>${escape(r.apartmentLocation)}</td></tr>
-        <tr><td style="color:#6B7280;">Check-in Date:</td><td>${escape(r.checkInDate)}</td></tr>
-        <tr><td style="color:#6B7280;">Check-in Time:</td><td>${escape(r.checkInTime)}</td></tr>
-        <tr><td style="color:#6B7280;">Nights:</td><td>${r.nights}</td></tr>
+        ${r.unitNumber ? `<tr><td style="color:#6B7280;">Unit Number:</td><td><strong>${escape(r.unitNumber)}</strong></td></tr>` : ''}
+        <tr><td style="color:#6B7280;">${isMonthly ? 'Move-in Date' : 'Check-in Date'}:</td><td>${escape(r.checkInDate)}</td></tr>
+        <tr><td style="color:#6B7280;">Time:</td><td>${escape(r.checkInTime)}</td></tr>
+        <tr><td style="color:#6B7280;">Duration:</td><td>${durationLabel}</td></tr>
         <tr><td style="color:#6B7280;">Total Amount:</td><td style="color:#0891B2;font-weight:bold;">KSh ${r.totalAmount.toLocaleString()}</td></tr>
         <tr><td style="color:#6B7280;">Transaction Code:</td><td><strong>${escape(r.transactionCode)}</strong></td></tr>
       </table>`;
