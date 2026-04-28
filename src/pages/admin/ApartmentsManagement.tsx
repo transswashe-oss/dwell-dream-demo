@@ -17,6 +17,7 @@ interface Apartment {
   type: string;
   location: string;
   price: number;
+  monthly_price?: number;
   rooms: number;
   bathrooms: number;
   description: string;
@@ -24,6 +25,7 @@ interface Apartment {
   gallery_images?: string[];
   featured: boolean;
   google_maps_url?: string;
+  unit_number?: string;
 }
 
 const ApartmentsManagement = () => {
@@ -114,6 +116,8 @@ const ApartmentsManagement = () => {
         type: 'Airbnb',
         location: (formData.get('location') as string)?.trim(),
         price: parseFloat(formData.get('price') as string) || 0,
+        monthly_price: parseFloat(formData.get('monthly_price') as string) || 0,
+        unit_number: (formData.get('unit_number') as string)?.trim() || null,
         rooms: parseInt(formData.get('rooms') as string) || 1,
         bathrooms: parseInt(formData.get('bathrooms') as string) || 1,
         description: (formData.get('description') as string)?.trim() || null,
@@ -241,11 +245,18 @@ const ApartmentsManagement = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="price">Price/Night (KSh) *</Label>
                   <Input id="price" name="price" type="number" min="0" step="100" defaultValue={editingApartment?.price} required placeholder="5000" />
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="monthly_price">Price/Month (KSh)</Label>
+                  <Input id="monthly_price" name="monthly_price" type="number" min="0" step="500" defaultValue={editingApartment?.monthly_price ?? 0} placeholder="60000 (0 = no rental)" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="rooms">Bedrooms *</Label>
                   <Input id="rooms" name="rooms" type="number" defaultValue={editingApartment?.rooms ?? 1} required min="1" />
@@ -253,6 +264,10 @@ const ApartmentsManagement = () => {
                 <div className="space-y-2">
                   <Label htmlFor="bathrooms">Bathrooms *</Label>
                   <Input id="bathrooms" name="bathrooms" type="number" defaultValue={editingApartment?.bathrooms ?? 1} required min="1" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="unit_number">Unit Number</Label>
+                  <Input id="unit_number" name="unit_number" defaultValue={editingApartment?.unit_number ?? ''} placeholder="e.g., A-204" />
                 </div>
               </div>
 
@@ -375,10 +390,14 @@ const ApartmentsManagement = () => {
                       )}
                     </div>
                     <p className="text-muted-foreground mb-2">{apartment.location}</p>
-                    <div className="flex gap-4 text-sm text-muted-foreground">
+                    <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
                       <span>KSh {apartment.price.toLocaleString()}/night</span>
+                      {apartment.monthly_price && apartment.monthly_price > 0 && (
+                        <><span>•</span><span className="text-accent">KSh {apartment.monthly_price.toLocaleString()}/month</span></>
+                      )}
                       <span>•</span>
                       <span>{apartment.rooms} beds</span>
+                      {apartment.unit_number && (<><span>•</span><span>Unit {apartment.unit_number}</span></>)}
                     </div>
                   </div>
                   <div className="flex gap-2">
