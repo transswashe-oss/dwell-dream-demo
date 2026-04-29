@@ -22,6 +22,9 @@ import ApartmentsManagement from "./ApartmentsManagement";
 import BookingsManagement from "./BookingsManagement";
 import MessagesManagement from "./MessagesManagement";
 import PromotionsManagement from "./PromotionsManagement";
+import TestimonialsManagement from "./TestimonialsManagement";
+import DiscountsManagement from "./DiscountsManagement";
+import SiteSettingsManagement from "./SiteSettingsManagement";
 
 interface DashboardStats {
   totalApartments: number;
@@ -357,12 +360,16 @@ const AdminDashboard = () => {
             </Button>
           </Link>
           <Link to="/admin/promotions">
-            <Button 
-              variant={location.pathname === '/admin/promotions' ? 'default' : 'outline'}
-              className="whitespace-nowrap"
-            >
-              Promotions
-            </Button>
+            <Button variant={location.pathname === '/admin/promotions' ? 'default' : 'outline'} className="whitespace-nowrap">Promotions</Button>
+          </Link>
+          <Link to="/admin/testimonials">
+            <Button variant={location.pathname === '/admin/testimonials' ? 'default' : 'outline'} className="whitespace-nowrap">Testimonials</Button>
+          </Link>
+          <Link to="/admin/discounts">
+            <Button variant={location.pathname === '/admin/discounts' ? 'default' : 'outline'} className="whitespace-nowrap">Discounts</Button>
+          </Link>
+          <Link to="/admin/settings">
+            <Button variant={location.pathname === '/admin/settings' ? 'default' : 'outline'} className="whitespace-nowrap">Settings</Button>
           </Link>
         </div>
 
@@ -373,6 +380,9 @@ const AdminDashboard = () => {
           <Route path="/bookings" element={<BookingsManagement />} />
           <Route path="/messages" element={<MessagesManagement />} />
           <Route path="/promotions" element={<PromotionsManagement />} />
+          <Route path="/testimonials" element={<TestimonialsManagement />} />
+          <Route path="/discounts" element={<DiscountsManagement />} />
+          <Route path="/settings" element={<SiteSettingsManagement />} />
           <Route path="*" element={<AdminOverview />} />
         </Routes>
       </div>
