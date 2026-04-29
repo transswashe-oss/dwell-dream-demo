@@ -6,7 +6,10 @@ import { Navigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, MapPin, CreditCard, Clock, Moon, Download, Home, Hash } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Calendar, MapPin, CreditCard, Clock, Moon, Download, Home, Hash, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { generateInvoicePDF } from "@/lib/invoice";
@@ -40,8 +43,42 @@ const MyBookings = () => {
   const { toast } = useToast();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [cancelOpen, setCancelOpen] = useState<string | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => { if (user) fetchBookings(); }, [user]);
+
+  const submitCancellation = async (b: Booking) => {
+    if (!user) return;
+    setCancelling(true);
+    try {
+      const { error } = await supabase.from('cancellation_requests').insert({
+        booking_id: b.id, user_id: user.id, reason: cancelReason.trim() || null,
+      });
+      if (error) throw error;
+      const { data: profile } = await supabase.from('profiles').select('name').eq('user_id', user.id).single();
+      supabase.functions.invoke('send-cancellation-email', {
+        body: {
+          clientName: profile?.name || 'Guest',
+          clientEmail: user.email,
+          apartmentName: b.apartment.name,
+          bookingType: b.booking_type,
+          transactionCode: b.transaction_code,
+          reason: cancelReason,
+          bookingId: b.id,
+        },
+      }).catch((e) => console.error('cancel email:', e));
+      toast({ title: 'Cancellation requested', description: 'Admin has been notified and will follow up shortly.' });
+      setCancelOpen(null);
+      setCancelReason("");
+      fetchBookings();
+    } catch (e: any) {
+      toast({ title: 'Error', description: e.message || 'Could not submit cancellation', variant: 'destructive' });
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   const fetchBookings = async () => {
     try {
@@ -90,6 +127,7 @@ const MyBookings = () => {
     switch (status) {
       case 'Approved': return 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200';
       case 'Rejected': return 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200';
+      case 'CancellationRequested': return 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200';
       default: return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200';
     }
   };
@@ -214,6 +252,31 @@ const MyBookings = () => {
                         <Download className="h-4 w-4 mr-2" />
                         Download Receipt (PDF)
                       </Button>
+                      {(booking.status === 'Pending' || booking.status === 'Approved') && (
+                        <Dialog open={cancelOpen === booking.id} onOpenChange={(o) => { setCancelOpen(o ? booking.id : null); if (!o) setCancelReason(""); }}>
+                          <DialogTrigger asChild>
+                            <Button variant="outline" size="sm" className="text-destructive">
+                              <XCircle className="h-4 w-4 mr-2" /> Request Cancellation
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Request Cancellation</DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-3">
+                              <p className="text-sm text-muted-foreground">Tell us briefly why you'd like to cancel <strong>{booking.apartment.name}</strong>. Our admin will review and respond within 24 hours.</p>
+                              <Label>Reason (optional)</Label>
+                              <Textarea rows={4} value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} placeholder="Change of plans, dates no longer work…" />
+                            </div>
+                            <DialogFooter>
+                              <Button variant="outline" onClick={() => setCancelOpen(null)} disabled={cancelling}>Back</Button>
+                              <Button onClick={() => submitCancellation(booking)} disabled={cancelling} className="bg-destructive hover:bg-destructive/90">
+                                {cancelling ? 'Submitting…' : 'Submit Request'}
+                              </Button>
+                            </DialogFooter>
+                          </DialogContent>
+                        </Dialog>
+                      )}
                     </div>
 
                     {booking.status === 'Approved' && booking.assigned_unit_number && (
