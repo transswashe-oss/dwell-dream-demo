@@ -97,14 +97,16 @@ const BookingsManagement = () => {
 
   const handleUpdateStatus = async (booking: Booking, status: 'Approved' | 'Rejected') => {
     try {
-      const { error } = await supabase
+      const { data: updated, error } = await supabase
         .from('bookings')
         .update({ status })
-        .eq('id', booking.id);
+        .eq('id', booking.id)
+        .select('assigned_unit_number')
+        .single();
 
       if (error) throw error;
+      const unitNumber = updated?.assigned_unit_number || booking.apartments.unit_number || '';
 
-      // Send status update email to client with full apartment details
       try {
         await supabase.functions.invoke('send-booking-status-email', {
           body: {
@@ -121,16 +123,18 @@ const BookingsManagement = () => {
             apartmentGoogleMapsUrl: booking.apartments.google_maps_url,
             checkInDate: booking.check_in_date ? format(new Date(booking.check_in_date), 'PPP') : 'Not specified',
             checkInTime: booking.check_in_time || 'Not specified',
-            nights: booking.nights || 1,
+            nights: booking.nights || 0,
+            months: booking.months || 0,
+            bookingType: booking.booking_type,
+            unitNumber,
             totalAmount: booking.total_amount || booking.apartments.price,
             transactionCode: booking.transaction_code,
-            status: status,
+            status,
           },
         });
         console.log('Status email sent successfully');
       } catch (emailError) {
         console.error('Error sending status email:', emailError);
-        // Don't fail the status update if email fails
       }
 
       toast({
