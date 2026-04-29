@@ -34,6 +34,7 @@ export type Database = {
       }
       apartments: {
         Row: {
+          available: boolean
           bathrooms: number
           created_at: string
           description: string | null
@@ -43,6 +44,7 @@ export type Database = {
           google_maps_url: string | null
           id: string
           location: string
+          max_occupancy: number
           monthly_price: number
           name: string
           price: number
@@ -53,6 +55,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          available?: boolean
           bathrooms?: number
           created_at?: string
           description?: string | null
@@ -62,6 +65,7 @@ export type Database = {
           google_maps_url?: string | null
           id?: string
           location: string
+          max_occupancy?: number
           monthly_price?: number
           name: string
           price?: number
@@ -72,6 +76,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          available?: boolean
           bathrooms?: number
           created_at?: string
           description?: string | null
@@ -81,6 +86,7 @@ export type Database = {
           google_maps_url?: string | null
           id?: string
           location?: string
+          max_occupancy?: number
           monthly_price?: number
           name?: string
           price?: number
@@ -150,6 +156,78 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      cancellation_requests: {
+        Row: {
+          admin_notes: string | null
+          booking_id: string
+          created_at: string
+          id: string
+          reason: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          booking_id: string
+          created_at?: string
+          id?: string
+          reason?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          admin_notes?: string | null
+          booking_id?: string
+          created_at?: string
+          id?: string
+          reason?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      discounts: {
+        Row: {
+          active: boolean
+          amount: number
+          code: string
+          created_at: string
+          description: string | null
+          discount_type: string
+          ends_at: string | null
+          id: string
+          starts_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          amount?: number
+          code: string
+          created_at?: string
+          description?: string | null
+          discount_type?: string
+          ends_at?: string | null
+          id?: string
+          starts_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          amount?: number
+          code?: string
+          created_at?: string
+          description?: string | null
+          discount_type?: string
+          ends_at?: string | null
+          id?: string
+          starts_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       email_logs: {
         Row: {
@@ -280,6 +358,48 @@ export type Database = {
           sent_at?: string | null
           subject?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      site_settings: {
+        Row: {
+          contact_address: string
+          contact_email: string
+          contact_phone: string
+          facebook_url: string | null
+          footer_text: string
+          id: number
+          instagram_url: string | null
+          linkedin_url: string | null
+          twitter_url: string | null
+          updated_at: string
+          whatsapp_number: string | null
+        }
+        Insert: {
+          contact_address?: string
+          contact_email?: string
+          contact_phone?: string
+          facebook_url?: string | null
+          footer_text?: string
+          id?: number
+          instagram_url?: string | null
+          linkedin_url?: string | null
+          twitter_url?: string | null
+          updated_at?: string
+          whatsapp_number?: string | null
+        }
+        Update: {
+          contact_address?: string
+          contact_email?: string
+          contact_phone?: string
+          facebook_url?: string | null
+          footer_text?: string
+          id?: number
+          instagram_url?: string | null
+          linkedin_url?: string | null
+          twitter_url?: string | null
+          updated_at?: string
+          whatsapp_number?: string | null
         }
         Relationships: []
       }
