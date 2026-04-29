@@ -15,11 +15,15 @@ interface Booking {
   check_in_date: string | null;
   check_in_time: string | null;
   nights: number | null;
+  months: number | null;
+  booking_type: string;
+  assigned_unit_number: string | null;
   total_amount: number | null;
   user_id: string;
   apartments: {
     name: string;
     price: number;
+    monthly_price: number | null;
     type: string;
     location: string;
     display_image: string | null;
@@ -27,6 +31,7 @@ interface Booking {
     rooms: number;
     bathrooms: number | null;
     google_maps_url: string | null;
+    unit_number: string | null;
   };
   profiles: {
     name: string;
@@ -50,7 +55,7 @@ const BookingsManagement = () => {
         .from('bookings')
         .select(`
           *,
-          apartments(name, price, type, location, display_image, description, rooms, bathrooms, google_maps_url)
+          apartments(name, price, monthly_price, type, location, display_image, description, rooms, bathrooms, google_maps_url, unit_number)
         `)
         .order('created_at', { ascending: false });
 
