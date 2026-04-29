@@ -22,6 +22,9 @@ interface StatusEmailRequest {
   checkInDate: string;
   checkInTime: string;
   nights: number;
+  months?: number;
+  bookingType?: 'per_night' | 'monthly';
+  unitNumber?: string;
   totalAmount: number;
   transactionCode: string;
   status: 'Approved' | 'Rejected';
@@ -83,14 +86,18 @@ serve(async (req) => {
         </ul>
       </div>` : '';
 
+    const isMonthly = r.bookingType === 'monthly';
+    const durationLabel = isMonthly ? `${r.months || 1} month(s)` : `${r.nights || 1} night(s)`;
     const bookingTable = `
       <div style="background:#F9FAFB;border-radius:8px;padding:18px;margin:0 0 20px;">
         <h3 style="color:#111827;font-size:17px;margin:0 0 12px;border-bottom:2px solid #0891B2;padding-bottom:8px;">📅 Booking Summary</h3>
         <table width="100%" cellpadding="6" cellspacing="0">
           <tr><td style="color:#6B7280;">Property:</td><td style="font-weight:600;text-align:right;">${escape(r.apartmentName)}</td></tr>
           <tr><td style="color:#6B7280;">Location:</td><td style="text-align:right;">${escape(r.apartmentLocation)}</td></tr>
-          <tr><td style="color:#6B7280;">Check-in:</td><td style="text-align:right;">${escape(r.checkInDate)} at ${escape(r.checkInTime)}</td></tr>
-          <tr><td style="color:#6B7280;">Nights:</td><td style="text-align:right;">${r.nights}</td></tr>
+          <tr><td style="color:#6B7280;">Booking Type:</td><td style="text-align:right;"><strong>${isMonthly ? 'Monthly Rental' : 'Per Night (Short Stay)'}</strong></td></tr>
+          ${r.unitNumber ? `<tr><td style="color:#6B7280;">Assigned Unit #:</td><td style="text-align:right;color:#0891B2;font-weight:bold;font-family:monospace;">${escape(r.unitNumber)}</td></tr>` : ''}
+          <tr><td style="color:#6B7280;">${isMonthly ? 'Move-in' : 'Check-in'}:</td><td style="text-align:right;">${escape(r.checkInDate)} at ${escape(r.checkInTime)}</td></tr>
+          <tr><td style="color:#6B7280;">Duration:</td><td style="text-align:right;">${durationLabel}</td></tr>
           <tr><td style="color:#6B7280;">Transaction:</td><td style="text-align:right;">${escape(r.transactionCode)}</td></tr>
           <tr><td style="color:#6B7280;font-weight:bold;">Total:</td><td style="color:#0891B2;font-weight:bold;text-align:right;">KSh ${r.totalAmount.toLocaleString()}</td></tr>
         </table>

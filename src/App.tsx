@@ -5,6 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { AppSettingsProvider } from "@/hooks/useAppSettings";
+import { SiteSettingsProvider } from "@/hooks/useSiteSettings";
+import AIChatbot from "@/components/AIChatbot";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
@@ -22,10 +24,12 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <AppSettingsProvider>
+      <SiteSettingsProvider>
       <AuthProvider>
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <AIChatbot />
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
@@ -40,6 +44,7 @@ const App = () => (
           </Routes>
         </BrowserRouter>
       </AuthProvider>
+      </SiteSettingsProvider>
       </AppSettingsProvider>
     </TooltipProvider>
   </QueryClientProvider>
