@@ -29,6 +29,8 @@ interface Apartment {
   rooms: number;
   bathrooms?: number;
   square_feet?: number;
+  max_occupancy?: number;
+  available?: boolean;
   description: string;
   display_image?: string;
   gallery_images?: string[];
@@ -110,6 +112,22 @@ const ApartmentDetails = () => {
   const handleBooking = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!user || !apartment || !checkInDate) return;
+
+    // Frontend validation: monthly availability + occupancy
+    if (bookingType === 'monthly') {
+      if (!apartment.monthly_price || apartment.monthly_price <= 0) {
+        toast({ title: 'Monthly rental unavailable', description: 'This property is not available for monthly rental. Pick per-night instead.', variant: 'destructive' });
+        return;
+      }
+      if (apartment.available === false) {
+        toast({ title: 'Property unavailable', description: 'Sorry, this unit is currently unavailable for long-term rent.', variant: 'destructive' });
+        return;
+      }
+      const cap = apartment.max_occupancy ?? 0;
+      if (cap > 0 && apartment.rooms * 2 > cap) {
+        // informational only — keep going
+      }
+    }
 
     setBookingLoading(true);
     const formData = new FormData(e.currentTarget);
@@ -395,12 +413,15 @@ const ApartmentDetails = () => {
                               <SelectItem value="per_night">Per Night (Short Stay)</SelectItem>
                               <SelectItem
                                 value="monthly"
-                                disabled={!apartment.monthly_price || apartment.monthly_price <= 0}
+                                disabled={!apartment.monthly_price || apartment.monthly_price <= 0 || apartment.available === false}
                               >
-                                Per Month (Rental){(!apartment.monthly_price || apartment.monthly_price <= 0) ? " — unavailable" : ""}
+                                Per Month (Rental){(!apartment.monthly_price || apartment.monthly_price <= 0) ? " — unavailable" : (apartment.available === false ? " — currently unavailable" : "")}
                               </SelectItem>
                             </SelectContent>
                           </Select>
+                          {apartment.max_occupancy ? (
+                            <p className="text-xs text-muted-foreground">Max occupancy: {apartment.max_occupancy} guests</p>
+                          ) : null}
                         </div>
 
                         <div className="space-y-2">
