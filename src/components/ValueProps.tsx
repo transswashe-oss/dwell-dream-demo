@@ -2,10 +2,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Waves, KeyRound, Headphones, Camera, BadgeCheck, Wallet } from "lucide-react";
 
 const features = [
-  { icon: Waves, title: "Ocean-View Stays", desc: "Every apartment within walking distance of the Indian Ocean." },
-  { icon: BadgeCheck, title: "Verified Listings", desc: "Each property is personally inspected by our local team." },
-  { icon: Wallet, title: "M-Pesa Payments", desc: "Pay securely via Till Number. No cards. No friction." },
-  { icon: KeyRound, title: "Instant Booking", desc: "Submit your transaction code and get a response in minutes." },
+  { icon: Waves, title: "Short Stays (Per Night)", desc: "Airbnb-style getaways from KSh 3,500/night — book a weekend by the ocean." },
+  { icon: KeyRound, title: "Long-Term Rentals (Per Month)", desc: "Furnished and unfurnished rentals from KSh 65,000/month for relocations and long stays." },
+  { icon: BadgeCheck, title: "Verified Listings", desc: "Each property is personally inspected by our local Mombasa team." },
+  { icon: Wallet, title: "M-Pesa Payments", desc: "Pay securely via Till 4097548. No cards. No friction." },
   { icon: Headphones, title: "24/7 Local Support", desc: "Real Mombasa-based hosts on call when you need them." },
   { icon: Camera, title: "Real Photos", desc: "What you see is what you get — no stock images, ever." },
 ];

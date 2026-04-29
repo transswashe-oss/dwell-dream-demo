@@ -30,17 +30,17 @@ const Hero = () => {
         <div className="max-w-5xl mx-auto">
           <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/20 text-white px-4 py-1.5 rounded-full mb-6 text-sm">
             <Sparkles className="h-4 w-4 text-accent" />
-            Hand-picked coastal stays in Mombasa
+            Short stays & long-term rentals on the Mombasa coast
           </div>
           <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight tracking-tight">
             Live the Coast.
             <span className="block bg-luxury-gradient bg-clip-text text-transparent">
-              Stay at Nyali Shore.
+              Stay or Rent on Nyali Shore.
             </span>
           </h1>
           <p className="text-lg md:text-2xl text-white/90 mb-10 max-w-3xl mx-auto leading-relaxed">
-            Premium short-stay apartments along Kenya's most beautiful coastline — verified hosts,
-            ocean breezes, and a booking process that actually works.
+            Whether you're after a weekend getaway or a year-long home by the sea — we offer
+            verified <strong>per-night Airbnb stays</strong> and <strong>per-month rentals</strong> across Nyali, Bamburi, Diani and beyond.
           </p>
 
           <div className="bg-background/95 backdrop-blur-md rounded-2xl p-6 md:p-8 shadow-property max-w-4xl mx-auto border border-white/40">

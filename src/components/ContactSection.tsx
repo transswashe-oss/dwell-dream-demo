@@ -5,9 +5,11 @@ import { Phone, Mail, MapPin, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 const ContactSection = () => {
   const { toast } = useToast();
+  const { settings: s } = useSiteSettings();
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -71,7 +73,7 @@ const ContactSection = () => {
                 </div>
                 <div>
                   <h3 className="font-semibold text-foreground">Phone</h3>
-                  <a href="tel:+254725409996" className="text-muted-foreground hover:text-primary transition-colors">+254 725 409 996</a>
+                  <a href={`tel:${s.contact_phone.replace(/\s/g, "")}`} className="text-muted-foreground hover:text-primary transition-colors">{s.contact_phone}</a>
                 </div>
               </div>
               
@@ -81,7 +83,7 @@ const ContactSection = () => {
                 </div>
                 <div>
                   <h3 className="font-semibold text-foreground">Email</h3>
-                  <a href="mailto:omaryw003@gmail.com" className="text-muted-foreground hover:text-primary transition-colors">omaryw003@gmail.com</a>
+                  <a href={`mailto:${s.contact_email}`} className="text-muted-foreground hover:text-primary transition-colors">{s.contact_email}</a>
                 </div>
               </div>
               
@@ -91,7 +93,7 @@ const ContactSection = () => {
                 </div>
                 <div>
                   <h3 className="font-semibold text-foreground">Office</h3>
-                  <p className="text-muted-foreground">Nyali, Mombasa, Kenya</p>
+                  <p className="text-muted-foreground">{s.contact_address}</p>
                 </div>
               </div>
               
