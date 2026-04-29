@@ -22,6 +22,9 @@ interface StatusEmailRequest {
   checkInDate: string;
   checkInTime: string;
   nights: number;
+  months?: number;
+  bookingType?: 'per_night' | 'monthly';
+  unitNumber?: string;
   totalAmount: number;
   transactionCode: string;
   status: 'Approved' | 'Rejected';
