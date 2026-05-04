@@ -3,7 +3,7 @@ import { Search, Calendar, CreditCard, Home } from "lucide-react";
 const steps = [
   { icon: Search, title: "Discover", desc: "Browse curated apartments across Nyali, Bamburi, and Diani." },
   { icon: Calendar, title: "Pick Dates", desc: "Choose your check-in and number of nights." },
-  { icon: CreditCard, title: "Pay via M-Pesa", desc: "Send the total to Till 4097548 and submit the code." },
+  { icon: CreditCard, title: "Pay via M-Pesa", desc: "Get an STK Push on your phone — just enter your M-Pesa PIN." },
   { icon: Home, title: "Check In", desc: "We approve, send directions, and welcome you to the coast." },
 ];
 

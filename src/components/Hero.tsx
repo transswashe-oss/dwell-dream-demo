@@ -82,7 +82,7 @@ const Hero = () => {
           <div className="mt-10 flex flex-wrap items-center justify-center gap-6 text-white/90 text-sm">
             <div className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-accent" /> Verified Hosts</div>
             <div className="flex items-center gap-2"><Star className="h-4 w-4 text-accent" /> 4.9 Avg. Rating</div>
-            <div className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-accent" /> Instant M-Pesa Booking</div>
+            <div className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-accent" /> Instant M-Pesa STK Push</div>
           </div>
         </div>
       </div>

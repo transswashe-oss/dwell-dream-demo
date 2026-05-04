@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MapPin, Bed, Calendar as CalendarIcon, CreditCard, Clock, Moon, ExternalLink } from "lucide-react";
+import { MapPin, Bed, Calendar as CalendarIcon, Smartphone, Clock, Moon, ExternalLink, Tag, Check, X, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -58,6 +58,11 @@ const ApartmentDetails = () => {
   const [checkInTime, setCheckInTime] = useState("14:00");
   const [nights, setNights] = useState(1);
   const [months, setMonths] = useState(1);
+  const [phone, setPhone] = useState("");
+  const [discountCode, setDiscountCode] = useState("");
+  const [discountInfo, setDiscountInfo] = useState<{ code: string; discountAmount: number; description?: string } | null>(null);
+  const [discountChecking, setDiscountChecking] = useState(false);
+  const [paymentStage, setPaymentStage] = useState<"idle" | "prompt" | "waiting" | "paid" | "failed">("idle");
 
   useEffect(() => {
     if (id) {
@@ -94,7 +99,41 @@ const ApartmentDetails = () => {
 
   const duration = bookingType === "monthly" ? months : nights;
 
-  const totalAmount = useMemo(() => unitPrice * duration, [unitPrice, duration]);
+  const subtotalAmount = useMemo(() => unitPrice * duration, [unitPrice, duration]);
+  const totalAmount = useMemo(
+    () => Math.max(0, subtotalAmount - (discountInfo?.discountAmount || 0)),
+    [subtotalAmount, discountInfo]
+  );
+
+  // Reset discount when subtotal changes
+  useEffect(() => {
+    if (discountInfo && discountInfo.discountAmount > subtotalAmount) setDiscountInfo(null);
+  }, [subtotalAmount, discountInfo]);
+
+  const applyDiscount = async () => {
+    if (!discountCode.trim()) return;
+    setDiscountChecking(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("validate-discount", {
+        body: { code: discountCode.trim(), subtotal: subtotalAmount },
+      });
+      if (error) throw error;
+      if (!data?.valid) {
+        toast({ title: "Invalid code", description: data?.error || "Code not accepted", variant: "destructive" });
+        setDiscountInfo(null);
+        return;
+      }
+      setDiscountInfo({ code: data.code, discountAmount: data.discountAmount, description: data.description });
+      toast({ title: "Discount applied!", description: `You saved KSh ${data.discountAmount.toLocaleString()}` });
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message || "Could not validate code", variant: "destructive" });
+    } finally {
+      setDiscountChecking(false);
+    }
+  };
+
+  const removeDiscount = () => { setDiscountInfo(null); setDiscountCode(""); };
+
 
   const allImages = useMemo(() => {
     if (!apartment) return [];
@@ -109,11 +148,29 @@ const ApartmentDetails = () => {
     setLightboxOpen(true);
   };
 
+  const pollPaymentStatus = async (bookingId: string): Promise<"paid" | "failed" | "timeout"> => {
+    const start = Date.now();
+    const TIMEOUT_MS = 90_000;
+    while (Date.now() - start < TIMEOUT_MS) {
+      await new Promise((r) => setTimeout(r, 3000));
+      try {
+        const { data } = await supabase.functions.invoke("lipana-status", { body: { bookingId } });
+        if (data?.payment_status === "paid") return "paid";
+        if (data?.payment_status === "failed") return "failed";
+      } catch (_) { /* keep polling */ }
+    }
+    return "timeout";
+  };
+
   const handleBooking = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!user || !apartment || !checkInDate) return;
 
-    // Frontend validation: monthly availability + occupancy
+    if (!phone.trim()) {
+      toast({ title: "Phone number required", description: "Enter the M-Pesa phone number that will receive the STK push.", variant: "destructive" });
+      return;
+    }
+
     if (bookingType === 'monthly') {
       if (!apartment.monthly_price || apartment.monthly_price <= 0) {
         toast({ title: 'Monthly rental unavailable', description: 'This property is not available for monthly rental. Pick per-night instead.', variant: 'destructive' });
@@ -123,43 +180,54 @@ const ApartmentDetails = () => {
         toast({ title: 'Property unavailable', description: 'Sorry, this unit is currently unavailable for long-term rent.', variant: 'destructive' });
         return;
       }
-      const cap = apartment.max_occupancy ?? 0;
-      if (cap > 0 && apartment.rooms * 2 > cap) {
-        // informational only — keep going
-      }
     }
 
     setBookingLoading(true);
-    const formData = new FormData(e.currentTarget);
-    const transactionCode = formData.get('transaction_code') as string;
+    setPaymentStage("prompt");
 
     try {
+      // 1. Create booking row first
       const { data: inserted, error } = await supabase
         .from('bookings')
         .insert({
           user_id: user.id,
           apartment_id: apartment.id,
-          transaction_code: transactionCode,
           check_in_date: format(checkInDate, 'yyyy-MM-dd'),
           check_in_time: checkInTime,
           nights: bookingType === 'per_night' ? nights : 1,
           months: bookingType === 'monthly' ? months : null,
           booking_type: bookingType,
+          subtotal_amount: subtotalAmount,
+          discount_code: discountInfo?.code || null,
+          discount_amount: discountInfo?.discountAmount || 0,
           total_amount: totalAmount,
+          phone_number: phone,
         })
         .select()
         .single();
 
       if (error) throw error;
+      const bookingId = inserted.id;
 
-      // Send email notifications
+      // 2. Trigger STK push
+      const { data: stk, error: stkErr } = await supabase.functions.invoke("lipana-stk-push", {
+        body: { bookingId, phone, amount: totalAmount },
+      });
+      if (stkErr || stk?.error) throw new Error(stk?.error || stkErr?.message || "STK push failed");
+
+      toast({ title: "Check your phone 📱", description: "Enter your M-Pesa PIN to complete the payment." });
+      setPaymentStage("waiting");
+
+      // 3. Poll for confirmation
+      const result = await pollPaymentStatus(bookingId);
+      if (result === "paid") setPaymentStage("paid");
+      else setPaymentStage("failed");
+
+      const finalTxn = result === "paid" ? "(awaiting M-Pesa receipt)" : "";
+
+      // 4. Send notification email + receipt regardless (admin reviews)
       try {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('name')
-          .eq('user_id', user.id)
-          .single();
-
+        const { data: profile } = await supabase.from('profiles').select('name').eq('user_id', user.id).single();
         await supabase.functions.invoke('send-booking-email', {
           body: {
             clientEmail: user.email,
@@ -167,25 +235,24 @@ const ApartmentDetails = () => {
             apartmentName: apartment.name,
             apartmentLocation: apartment.location,
             checkInDate: format(checkInDate, 'PPP'),
-            checkInTime: checkInTime,
+            checkInTime,
             nights: bookingType === 'per_night' ? nights : 0,
             months: bookingType === 'monthly' ? months : 0,
             bookingType,
             unitNumber: inserted?.assigned_unit_number || apartment.unit_number || '',
-            totalAmount: totalAmount,
-            transactionCode: transactionCode,
+            totalAmount,
+            transactionCode: finalTxn,
           },
         });
-      } catch (emailError) {
-        console.error('Error sending email:', emailError);
-      }
+      } catch (emailError) { console.error('Email error:', emailError); }
 
-      // Auto-generate PDF receipt
+      // 5. Auto-generate PDF receipt
       try {
         const { generateInvoicePDF } = await import('@/lib/invoice');
+        const profileRes = await supabase.from('profiles').select('name').eq('user_id', user.id).single();
         await generateInvoicePDF({
-          bookingId: inserted?.id || crypto.randomUUID(),
-          clientName: (await supabase.from('profiles').select('name').eq('user_id', user.id).single()).data?.name || 'Guest',
+          bookingId,
+          clientName: profileRes.data?.name || 'Guest',
           clientEmail: user.email || '',
           apartmentName: apartment.name,
           apartmentLocation: apartment.location,
@@ -194,30 +261,37 @@ const ApartmentDetails = () => {
           checkInTime,
           duration,
           unitPrice,
+          subtotalAmount,
+          discountCode: discountInfo?.code,
+          discountAmount: discountInfo?.discountAmount || 0,
           totalAmount,
-          transactionCode,
-          status: 'Pending',
+          transactionCode: finalTxn,
+          status: result === "paid" ? "Paid" : "Pending",
           unitNumber: inserted?.assigned_unit_number || apartment.unit_number,
           createdAt: new Date().toISOString(),
         });
-      } catch (pdfErr) {
-        console.error('PDF generation failed:', pdfErr);
+      } catch (pdfErr) { console.error('PDF generation failed:', pdfErr); }
+
+      if (result === "paid") {
+        toast({ title: "Payment received ✅", description: "Receipt downloaded. Admin will confirm shortly." });
+      } else if (result === "failed") {
+        toast({ title: "Payment not completed", description: "Your booking is saved as Pending. You can retry payment from My Bookings.", variant: "destructive" });
+      } else {
+        toast({ title: "Still waiting…", description: "We didn't get confirmation in time. Receipt downloaded — check My Bookings later." });
       }
 
-      toast({
-        title: "Booking Submitted!",
-        description: "Receipt downloaded. Check your email for confirmation.",
-      });
-      
       setShowBookingDialog(false);
       setCheckInDate(undefined);
       setNights(1);
       setMonths(1);
+      setPhone("");
+      removeDiscount();
     } catch (error: any) {
-      console.error('Error creating booking:', error);
+      console.error('Booking error:', error);
+      setPaymentStage("failed");
       toast({
         title: "Error",
-        description: error.message || "Could not create booking",
+        description: error.message || "Could not complete booking",
         variant: "destructive",
       });
     } finally {
@@ -493,57 +567,93 @@ const ApartmentDetails = () => {
                           </div>
                         )}
 
-                        <div className="bg-secondary/50 p-4 rounded-lg">
-                          <div className="flex justify-between mb-2">
-                            <span>KSh {unitPrice.toLocaleString()} x {duration} {bookingType === 'monthly' ? 'month' : 'night'}{duration > 1 ? 's' : ''}</span>
-                            <span>KSh {totalAmount.toLocaleString()}</span>
+                        {/* Discount code */}
+                        <div className="space-y-2">
+                          <Label className="flex items-center gap-2"><Tag className="h-4 w-4" /> Discount Code (optional)</Label>
+                          {discountInfo ? (
+                            <div className="flex items-center justify-between bg-green-500/10 border border-green-500/30 rounded-md px-3 py-2">
+                              <div className="text-sm">
+                                <span className="font-mono font-bold">{discountInfo.code}</span>
+                                <span className="text-green-700 dark:text-green-400 ml-2">−KSh {discountInfo.discountAmount.toLocaleString()}</span>
+                              </div>
+                              <Button type="button" size="sm" variant="ghost" onClick={removeDiscount}>Remove</Button>
+                            </div>
+                          ) : (
+                            <div className="flex gap-2">
+                              <Input value={discountCode} onChange={(e) => setDiscountCode(e.target.value.toUpperCase())} placeholder="e.g. SUMMER10" />
+                              <Button type="button" variant="outline" onClick={applyDiscount} disabled={discountChecking || !discountCode.trim()}>
+                                {discountChecking ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply"}
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Totals */}
+                        <div className="bg-secondary/50 p-4 rounded-lg space-y-1">
+                          <div className="flex justify-between text-sm">
+                            <span>KSh {unitPrice.toLocaleString()} × {duration} {bookingType === 'monthly' ? 'month' : 'night'}{duration > 1 ? 's' : ''}</span>
+                            <span>KSh {subtotalAmount.toLocaleString()}</span>
                           </div>
-                          <div className="flex justify-between font-bold text-lg border-t pt-2">
-                            <span>Total Amount</span>
+                          {discountInfo && (
+                            <div className="flex justify-between text-sm text-green-700 dark:text-green-400">
+                              <span>Discount ({discountInfo.code})</span>
+                              <span>−KSh {discountInfo.discountAmount.toLocaleString()}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between font-bold text-lg border-t pt-2 mt-1">
+                            <span>Total</span>
                             <span className="text-primary">KSh {totalAmount.toLocaleString()}</span>
                           </div>
                         </div>
 
-                        <div className="bg-accent/10 p-4 rounded-lg">
-                          <h4 className="font-semibold mb-2 flex items-center">
-                            <CreditCard className="h-4 w-4 mr-2" />
-                            Payment Instructions
-                          </h4>
-                          <p className="text-sm text-muted-foreground mb-2">
-                            Pay to Till Number: <strong>4097548</strong><br />
-                            Name: <strong>OMAR WASHE KONDE</strong><br />
-                            Amount: <strong>KSh {totalAmount.toLocaleString()}</strong>
-                          </p>
+                        {/* M-Pesa phone */}
+                        <div className="space-y-2">
+                          <Label htmlFor="phone" className="flex items-center gap-2"><Smartphone className="h-4 w-4" /> M-Pesa Phone Number *</Label>
+                          <Input
+                            id="phone"
+                            type="tel"
+                            value={phone}
+                            onChange={(e) => setPhone(e.target.value)}
+                            placeholder="07XXXXXXXX or 2547XXXXXXXX"
+                            required
+                          />
                           <p className="text-xs text-muted-foreground">
-                            Complete the payment first, then enter your transaction code below
+                            We'll send an STK Push to this number — just enter your M-Pesa PIN to pay.
                           </p>
                         </div>
 
-                        <div className="space-y-2">
-                          <Label htmlFor="transaction_code">Transaction Code *</Label>
-                          <Input
-                            id="transaction_code"
-                            name="transaction_code"
-                            required
-                            placeholder="Enter M-Pesa transaction code"
-                          />
-                        </div>
+                        {paymentStage !== "idle" && (
+                          <div className={`rounded-md px-3 py-2 text-sm flex items-center gap-2 ${
+                            paymentStage === "paid" ? "bg-green-500/10 text-green-700 dark:text-green-400" :
+                            paymentStage === "failed" ? "bg-destructive/10 text-destructive" :
+                            "bg-primary/10 text-primary"
+                          }`}>
+                            {paymentStage === "paid" ? <Check className="h-4 w-4" /> :
+                             paymentStage === "failed" ? <X className="h-4 w-4" /> :
+                             <Loader2 className="h-4 w-4 animate-spin" />}
+                            {paymentStage === "prompt" && "Sending STK Push to your phone…"}
+                            {paymentStage === "waiting" && "Waiting for you to enter your M-Pesa PIN…"}
+                            {paymentStage === "paid" && "Payment confirmed!"}
+                            {paymentStage === "failed" && "Payment not completed. You can retry."}
+                          </div>
+                        )}
 
                         <div className="flex gap-2">
-                          <Button 
-                            type="button" 
-                            variant="outline" 
+                          <Button
+                            type="button"
+                            variant="outline"
                             onClick={() => setShowBookingDialog(false)}
                             className="flex-1"
+                            disabled={bookingLoading}
                           >
                             Cancel
                           </Button>
-                          <Button 
-                            type="submit" 
+                          <Button
+                            type="submit"
                             disabled={bookingLoading || !checkInDate}
-                            className="flex-1"
+                            className="flex-1 ocean-gradient"
                           >
-                            {bookingLoading ? "Submitting..." : "Submit Booking"}
+                            {bookingLoading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Processing…</> : <>Pay KSh {totalAmount.toLocaleString()}</>}
                           </Button>
                         </div>
                       </form>

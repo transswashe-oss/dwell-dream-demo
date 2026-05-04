@@ -106,10 +106,17 @@ export type Database = {
           check_in_date: string
           check_in_time: string | null
           created_at: string
+          discount_amount: number
+          discount_code: string | null
           id: string
           months: number | null
+          mpesa_checkout_id: string | null
+          mpesa_receipt: string | null
           nights: number
+          payment_status: string
+          phone_number: string | null
           status: string
+          subtotal_amount: number | null
           total_amount: number
           transaction_code: string | null
           updated_at: string
@@ -122,10 +129,17 @@ export type Database = {
           check_in_date: string
           check_in_time?: string | null
           created_at?: string
+          discount_amount?: number
+          discount_code?: string | null
           id?: string
           months?: number | null
+          mpesa_checkout_id?: string | null
+          mpesa_receipt?: string | null
           nights?: number
+          payment_status?: string
+          phone_number?: string | null
           status?: string
+          subtotal_amount?: number | null
           total_amount?: number
           transaction_code?: string | null
           updated_at?: string
@@ -138,10 +152,17 @@ export type Database = {
           check_in_date?: string
           check_in_time?: string | null
           created_at?: string
+          discount_amount?: number
+          discount_code?: string | null
           id?: string
           months?: number | null
+          mpesa_checkout_id?: string | null
+          mpesa_receipt?: string | null
           nights?: number
+          payment_status?: string
+          phone_number?: string | null
           status?: string
+          subtotal_amount?: number | null
           total_amount?: number
           transaction_code?: string | null
           updated_at?: string

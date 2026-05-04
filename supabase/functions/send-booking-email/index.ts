@@ -66,7 +66,7 @@ const handler = async (req: Request): Promise<Response> => {
       html: emailLayout({
         title: "🛎️ New Booking Received",
         bannerColor: "#F59E0B",
-        bodyHtml: `<p>A new booking was placed and is awaiting your approval:</p>${detailsTable}<p style="margin-top:20px;">Please verify the M-Pesa payment and approve/reject the booking in the admin panel.</p>`,
+        bodyHtml: `<p>A new booking was placed and is awaiting your approval:</p>${detailsTable}<p style="margin-top:20px;">Verify the M-Pesa payment status (STK Push) and approve/reject the booking in the admin panel.</p>`,
       }),
     });
 
