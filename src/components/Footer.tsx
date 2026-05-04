@@ -62,7 +62,7 @@ const Footer = () => {
               <li>🌊 Short stays (per night)</li>
               <li>🏠 Long-term rentals (per month)</li>
               <li>🔑 Verified hosts</li>
-              <li>💳 M-Pesa payments</li>
+              <li>💳 M-Pesa STK Push</li>
             </ul>
           </div>
         </div>
