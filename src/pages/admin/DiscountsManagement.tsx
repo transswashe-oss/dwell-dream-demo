@@ -8,8 +8,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Tag } from "lucide-react";
+import { Plus, Trash2, Tag, Pencil, Save } from "lucide-react";
 
 interface Discount {
   id: string;
@@ -23,11 +24,18 @@ interface Discount {
   created_at: string;
 }
 
+const emptyForm = { code: "", description: "", discount_type: "percentage", amount: 10, starts_at: "", ends_at: "", active: true };
+
+const toLocalDt = (iso: string | null) => (iso ? new Date(iso).toISOString().slice(0, 16) : "");
+
 const DiscountsManagement = () => {
   const { toast } = useToast();
   const [items, setItems] = useState<Discount[]>([]);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ code: "", description: "", discount_type: "percentage", amount: 10, starts_at: "", ends_at: "", active: true });
+  const [form, setForm] = useState(emptyForm);
+  const [editing, setEditing] = useState<Discount | null>(null);
+  const [editForm, setEditForm] = useState(emptyForm);
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -51,7 +59,7 @@ const DiscountsManagement = () => {
     if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
     else {
       toast({ title: "Discount created" });
-      setForm({ code: "", description: "", discount_type: "percentage", amount: 10, starts_at: "", ends_at: "", active: true });
+      setForm(emptyForm);
       load();
     }
   };
@@ -61,9 +69,44 @@ const DiscountsManagement = () => {
     await supabase.from("discounts").delete().eq("id", id);
     load();
   };
+
   const toggle = async (d: Discount) => {
     await supabase.from("discounts").update({ active: !d.active }).eq("id", d.id);
     load();
+  };
+
+  const openEdit = (d: Discount) => {
+    setEditing(d);
+    setEditForm({
+      code: d.code,
+      description: d.description || "",
+      discount_type: d.discount_type,
+      amount: Number(d.amount),
+      starts_at: toLocalDt(d.starts_at),
+      ends_at: toLocalDt(d.ends_at),
+      active: d.active,
+    });
+  };
+
+  const saveEdit = async () => {
+    if (!editing) return;
+    setSavingEdit(true);
+    const { error } = await supabase.from("discounts").update({
+      code: editForm.code.trim().toUpperCase(),
+      description: editForm.description.trim() || null,
+      discount_type: editForm.discount_type,
+      amount: Number(editForm.amount),
+      starts_at: editForm.starts_at || null,
+      ends_at: editForm.ends_at || null,
+      active: editForm.active,
+    }).eq("id", editing.id);
+    setSavingEdit(false);
+    if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
+    else {
+      toast({ title: "Discount updated" });
+      setEditing(null);
+      load();
+    }
   };
 
   return (
@@ -126,7 +169,7 @@ const DiscountsManagement = () => {
                       <span className="font-mono font-bold">{d.code}</span>
                       <Badge variant={d.active ? "default" : "secondary"}>{d.active ? "Active" : "Inactive"}</Badge>
                       <Badge variant="outline">
-                        {d.discount_type === "percentage" ? `${d.amount}% off` : `KSh ${d.amount.toLocaleString()} off`}
+                        {d.discount_type === "percentage" ? `${d.amount}% off` : `KSh ${Number(d.amount).toLocaleString()} off`}
                       </Badge>
                     </div>
                     {d.description && <p className="text-sm text-muted-foreground">{d.description}</p>}
@@ -134,7 +177,10 @@ const DiscountsManagement = () => {
                       {d.starts_at ? `From ${new Date(d.starts_at).toLocaleDateString()}` : "No start"} → {d.ends_at ? `To ${new Date(d.ends_at).toLocaleDateString()}` : "No end"}
                     </p>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
+                    <Button size="sm" variant="outline" onClick={() => openEdit(d)}>
+                      <Pencil className="h-4 w-4 mr-1" /> Edit
+                    </Button>
                     <Button size="sm" variant="outline" onClick={() => toggle(d)}>{d.active ? "Disable" : "Enable"}</Button>
                     <Button size="sm" variant="outline" onClick={() => remove(d.id)} className="text-destructive">
                       <Trash2 className="h-4 w-4" />
@@ -146,6 +192,57 @@ const DiscountsManagement = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Edit dialog */}
+      <Dialog open={!!editing} onOpenChange={(v) => !v && setEditing(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit Discount</DialogTitle>
+          </DialogHeader>
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Code *</Label>
+              <Input value={editForm.code} onChange={(e) => setEditForm({ ...editForm, code: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label>Type</Label>
+              <Select value={editForm.discount_type} onValueChange={(v) => setEditForm({ ...editForm, discount_type: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="percentage">Percentage (%)</SelectItem>
+                  <SelectItem value="fixed">Fixed (KSh)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Amount *</Label>
+              <Input type="number" min={0} value={editForm.amount} onChange={(e) => setEditForm({ ...editForm, amount: Number(e.target.value) })} />
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label>Description</Label>
+              <Textarea value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label>Starts at</Label>
+              <Input type="datetime-local" value={editForm.starts_at} onChange={(e) => setEditForm({ ...editForm, starts_at: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label>Ends at</Label>
+              <Input type="datetime-local" value={editForm.ends_at} onChange={(e) => setEditForm({ ...editForm, ends_at: e.target.value })} />
+            </div>
+            <div className="flex items-center gap-2 md:col-span-2">
+              <Switch checked={editForm.active} onCheckedChange={(v) => setEditForm({ ...editForm, active: v })} />
+              <Label>Active</Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
+            <Button onClick={saveEdit} disabled={savingEdit} className="ocean-gradient">
+              <Save className="h-4 w-4 mr-2" /> {savingEdit ? "Saving…" : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
