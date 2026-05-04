@@ -148,11 +148,29 @@ const ApartmentDetails = () => {
     setLightboxOpen(true);
   };
 
+  const pollPaymentStatus = async (bookingId: string): Promise<"paid" | "failed" | "timeout"> => {
+    const start = Date.now();
+    const TIMEOUT_MS = 90_000;
+    while (Date.now() - start < TIMEOUT_MS) {
+      await new Promise((r) => setTimeout(r, 3000));
+      try {
+        const { data } = await supabase.functions.invoke("lipana-status", { body: { bookingId } });
+        if (data?.payment_status === "paid") return "paid";
+        if (data?.payment_status === "failed") return "failed";
+      } catch (_) { /* keep polling */ }
+    }
+    return "timeout";
+  };
+
   const handleBooking = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!user || !apartment || !checkInDate) return;
 
-    // Frontend validation: monthly availability + occupancy
+    if (!phone.trim()) {
+      toast({ title: "Phone number required", description: "Enter the M-Pesa phone number that will receive the STK push.", variant: "destructive" });
+      return;
+    }
+
     if (bookingType === 'monthly') {
       if (!apartment.monthly_price || apartment.monthly_price <= 0) {
         toast({ title: 'Monthly rental unavailable', description: 'This property is not available for monthly rental. Pick per-night instead.', variant: 'destructive' });
@@ -162,43 +180,54 @@ const ApartmentDetails = () => {
         toast({ title: 'Property unavailable', description: 'Sorry, this unit is currently unavailable for long-term rent.', variant: 'destructive' });
         return;
       }
-      const cap = apartment.max_occupancy ?? 0;
-      if (cap > 0 && apartment.rooms * 2 > cap) {
-        // informational only — keep going
-      }
     }
 
     setBookingLoading(true);
-    const formData = new FormData(e.currentTarget);
-    const transactionCode = formData.get('transaction_code') as string;
+    setPaymentStage("prompt");
 
     try {
+      // 1. Create booking row first
       const { data: inserted, error } = await supabase
         .from('bookings')
         .insert({
           user_id: user.id,
           apartment_id: apartment.id,
-          transaction_code: transactionCode,
           check_in_date: format(checkInDate, 'yyyy-MM-dd'),
           check_in_time: checkInTime,
           nights: bookingType === 'per_night' ? nights : 1,
           months: bookingType === 'monthly' ? months : null,
           booking_type: bookingType,
+          subtotal_amount: subtotalAmount,
+          discount_code: discountInfo?.code || null,
+          discount_amount: discountInfo?.discountAmount || 0,
           total_amount: totalAmount,
+          phone_number: phone,
         })
         .select()
         .single();
 
       if (error) throw error;
+      const bookingId = inserted.id;
 
-      // Send email notifications
+      // 2. Trigger STK push
+      const { data: stk, error: stkErr } = await supabase.functions.invoke("lipana-stk-push", {
+        body: { bookingId, phone, amount: totalAmount },
+      });
+      if (stkErr || stk?.error) throw new Error(stk?.error || stkErr?.message || "STK push failed");
+
+      toast({ title: "Check your phone 📱", description: "Enter your M-Pesa PIN to complete the payment." });
+      setPaymentStage("waiting");
+
+      // 3. Poll for confirmation
+      const result = await pollPaymentStatus(bookingId);
+      if (result === "paid") setPaymentStage("paid");
+      else setPaymentStage("failed");
+
+      const finalTxn = result === "paid" ? "(awaiting M-Pesa receipt)" : "";
+
+      // 4. Send notification email + receipt regardless (admin reviews)
       try {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('name')
-          .eq('user_id', user.id)
-          .single();
-
+        const { data: profile } = await supabase.from('profiles').select('name').eq('user_id', user.id).single();
         await supabase.functions.invoke('send-booking-email', {
           body: {
             clientEmail: user.email,
@@ -206,25 +235,24 @@ const ApartmentDetails = () => {
             apartmentName: apartment.name,
             apartmentLocation: apartment.location,
             checkInDate: format(checkInDate, 'PPP'),
-            checkInTime: checkInTime,
+            checkInTime,
             nights: bookingType === 'per_night' ? nights : 0,
             months: bookingType === 'monthly' ? months : 0,
             bookingType,
             unitNumber: inserted?.assigned_unit_number || apartment.unit_number || '',
-            totalAmount: totalAmount,
-            transactionCode: transactionCode,
+            totalAmount,
+            transactionCode: finalTxn,
           },
         });
-      } catch (emailError) {
-        console.error('Error sending email:', emailError);
-      }
+      } catch (emailError) { console.error('Email error:', emailError); }
 
-      // Auto-generate PDF receipt
+      // 5. Auto-generate PDF receipt
       try {
         const { generateInvoicePDF } = await import('@/lib/invoice');
+        const profileRes = await supabase.from('profiles').select('name').eq('user_id', user.id).single();
         await generateInvoicePDF({
-          bookingId: inserted?.id || crypto.randomUUID(),
-          clientName: (await supabase.from('profiles').select('name').eq('user_id', user.id).single()).data?.name || 'Guest',
+          bookingId,
+          clientName: profileRes.data?.name || 'Guest',
           clientEmail: user.email || '',
           apartmentName: apartment.name,
           apartmentLocation: apartment.location,
@@ -233,30 +261,37 @@ const ApartmentDetails = () => {
           checkInTime,
           duration,
           unitPrice,
+          subtotalAmount,
+          discountCode: discountInfo?.code,
+          discountAmount: discountInfo?.discountAmount || 0,
           totalAmount,
-          transactionCode,
-          status: 'Pending',
+          transactionCode: finalTxn,
+          status: result === "paid" ? "Paid" : "Pending",
           unitNumber: inserted?.assigned_unit_number || apartment.unit_number,
           createdAt: new Date().toISOString(),
         });
-      } catch (pdfErr) {
-        console.error('PDF generation failed:', pdfErr);
+      } catch (pdfErr) { console.error('PDF generation failed:', pdfErr); }
+
+      if (result === "paid") {
+        toast({ title: "Payment received ✅", description: "Receipt downloaded. Admin will confirm shortly." });
+      } else if (result === "failed") {
+        toast({ title: "Payment not completed", description: "Your booking is saved as Pending. You can retry payment from My Bookings.", variant: "destructive" });
+      } else {
+        toast({ title: "Still waiting…", description: "We didn't get confirmation in time. Receipt downloaded — check My Bookings later." });
       }
 
-      toast({
-        title: "Booking Submitted!",
-        description: "Receipt downloaded. Check your email for confirmation.",
-      });
-      
       setShowBookingDialog(false);
       setCheckInDate(undefined);
       setNights(1);
       setMonths(1);
+      setPhone("");
+      removeDiscount();
     } catch (error: any) {
-      console.error('Error creating booking:', error);
+      console.error('Booking error:', error);
+      setPaymentStage("failed");
       toast({
         title: "Error",
-        description: error.message || "Could not create booking",
+        description: error.message || "Could not complete booking",
         variant: "destructive",
       });
     } finally {
