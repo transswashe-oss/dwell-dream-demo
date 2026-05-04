@@ -567,57 +567,93 @@ const ApartmentDetails = () => {
                           </div>
                         )}
 
-                        <div className="bg-secondary/50 p-4 rounded-lg">
-                          <div className="flex justify-between mb-2">
-                            <span>KSh {unitPrice.toLocaleString()} x {duration} {bookingType === 'monthly' ? 'month' : 'night'}{duration > 1 ? 's' : ''}</span>
-                            <span>KSh {totalAmount.toLocaleString()}</span>
+                        {/* Discount code */}
+                        <div className="space-y-2">
+                          <Label className="flex items-center gap-2"><Tag className="h-4 w-4" /> Discount Code (optional)</Label>
+                          {discountInfo ? (
+                            <div className="flex items-center justify-between bg-green-500/10 border border-green-500/30 rounded-md px-3 py-2">
+                              <div className="text-sm">
+                                <span className="font-mono font-bold">{discountInfo.code}</span>
+                                <span className="text-green-700 dark:text-green-400 ml-2">−KSh {discountInfo.discountAmount.toLocaleString()}</span>
+                              </div>
+                              <Button type="button" size="sm" variant="ghost" onClick={removeDiscount}>Remove</Button>
+                            </div>
+                          ) : (
+                            <div className="flex gap-2">
+                              <Input value={discountCode} onChange={(e) => setDiscountCode(e.target.value.toUpperCase())} placeholder="e.g. SUMMER10" />
+                              <Button type="button" variant="outline" onClick={applyDiscount} disabled={discountChecking || !discountCode.trim()}>
+                                {discountChecking ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply"}
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Totals */}
+                        <div className="bg-secondary/50 p-4 rounded-lg space-y-1">
+                          <div className="flex justify-between text-sm">
+                            <span>KSh {unitPrice.toLocaleString()} × {duration} {bookingType === 'monthly' ? 'month' : 'night'}{duration > 1 ? 's' : ''}</span>
+                            <span>KSh {subtotalAmount.toLocaleString()}</span>
                           </div>
-                          <div className="flex justify-between font-bold text-lg border-t pt-2">
-                            <span>Total Amount</span>
+                          {discountInfo && (
+                            <div className="flex justify-between text-sm text-green-700 dark:text-green-400">
+                              <span>Discount ({discountInfo.code})</span>
+                              <span>−KSh {discountInfo.discountAmount.toLocaleString()}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between font-bold text-lg border-t pt-2 mt-1">
+                            <span>Total</span>
                             <span className="text-primary">KSh {totalAmount.toLocaleString()}</span>
                           </div>
                         </div>
 
-                        <div className="bg-accent/10 p-4 rounded-lg">
-                          <h4 className="font-semibold mb-2 flex items-center">
-                            <CreditCard className="h-4 w-4 mr-2" />
-                            Payment Instructions
-                          </h4>
-                          <p className="text-sm text-muted-foreground mb-2">
-                            Pay to Till Number: <strong>4097548</strong><br />
-                            Name: <strong>OMAR WASHE KONDE</strong><br />
-                            Amount: <strong>KSh {totalAmount.toLocaleString()}</strong>
-                          </p>
+                        {/* M-Pesa phone */}
+                        <div className="space-y-2">
+                          <Label htmlFor="phone" className="flex items-center gap-2"><Smartphone className="h-4 w-4" /> M-Pesa Phone Number *</Label>
+                          <Input
+                            id="phone"
+                            type="tel"
+                            value={phone}
+                            onChange={(e) => setPhone(e.target.value)}
+                            placeholder="07XXXXXXXX or 2547XXXXXXXX"
+                            required
+                          />
                           <p className="text-xs text-muted-foreground">
-                            Complete the payment first, then enter your transaction code below
+                            We'll send an STK Push to this number — just enter your M-Pesa PIN to pay.
                           </p>
                         </div>
 
-                        <div className="space-y-2">
-                          <Label htmlFor="transaction_code">Transaction Code *</Label>
-                          <Input
-                            id="transaction_code"
-                            name="transaction_code"
-                            required
-                            placeholder="Enter M-Pesa transaction code"
-                          />
-                        </div>
+                        {paymentStage !== "idle" && (
+                          <div className={`rounded-md px-3 py-2 text-sm flex items-center gap-2 ${
+                            paymentStage === "paid" ? "bg-green-500/10 text-green-700 dark:text-green-400" :
+                            paymentStage === "failed" ? "bg-destructive/10 text-destructive" :
+                            "bg-primary/10 text-primary"
+                          }`}>
+                            {paymentStage === "paid" ? <Check className="h-4 w-4" /> :
+                             paymentStage === "failed" ? <X className="h-4 w-4" /> :
+                             <Loader2 className="h-4 w-4 animate-spin" />}
+                            {paymentStage === "prompt" && "Sending STK Push to your phone…"}
+                            {paymentStage === "waiting" && "Waiting for you to enter your M-Pesa PIN…"}
+                            {paymentStage === "paid" && "Payment confirmed!"}
+                            {paymentStage === "failed" && "Payment not completed. You can retry."}
+                          </div>
+                        )}
 
                         <div className="flex gap-2">
-                          <Button 
-                            type="button" 
-                            variant="outline" 
+                          <Button
+                            type="button"
+                            variant="outline"
                             onClick={() => setShowBookingDialog(false)}
                             className="flex-1"
+                            disabled={bookingLoading}
                           >
                             Cancel
                           </Button>
-                          <Button 
-                            type="submit" 
+                          <Button
+                            type="submit"
                             disabled={bookingLoading || !checkInDate}
-                            className="flex-1"
+                            className="flex-1 ocean-gradient"
                           >
-                            {bookingLoading ? "Submitting..." : "Submit Booking"}
+                            {bookingLoading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Processing…</> : <>Pay KSh {totalAmount.toLocaleString()}</>}
                           </Button>
                         </div>
                       </form>
