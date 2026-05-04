@@ -99,7 +99,41 @@ const ApartmentDetails = () => {
 
   const duration = bookingType === "monthly" ? months : nights;
 
-  const totalAmount = useMemo(() => unitPrice * duration, [unitPrice, duration]);
+  const subtotalAmount = useMemo(() => unitPrice * duration, [unitPrice, duration]);
+  const totalAmount = useMemo(
+    () => Math.max(0, subtotalAmount - (discountInfo?.discountAmount || 0)),
+    [subtotalAmount, discountInfo]
+  );
+
+  // Reset discount when subtotal changes
+  useEffect(() => {
+    if (discountInfo && discountInfo.discountAmount > subtotalAmount) setDiscountInfo(null);
+  }, [subtotalAmount, discountInfo]);
+
+  const applyDiscount = async () => {
+    if (!discountCode.trim()) return;
+    setDiscountChecking(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("validate-discount", {
+        body: { code: discountCode.trim(), subtotal: subtotalAmount },
+      });
+      if (error) throw error;
+      if (!data?.valid) {
+        toast({ title: "Invalid code", description: data?.error || "Code not accepted", variant: "destructive" });
+        setDiscountInfo(null);
+        return;
+      }
+      setDiscountInfo({ code: data.code, discountAmount: data.discountAmount, description: data.description });
+      toast({ title: "Discount applied!", description: `You saved KSh ${data.discountAmount.toLocaleString()}` });
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message || "Could not validate code", variant: "destructive" });
+    } finally {
+      setDiscountChecking(false);
+    }
+  };
+
+  const removeDiscount = () => { setDiscountInfo(null); setDiscountCode(""); };
+
 
   const allImages = useMemo(() => {
     if (!apartment) return [];
