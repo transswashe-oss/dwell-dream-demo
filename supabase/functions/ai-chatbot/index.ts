@@ -36,7 +36,7 @@ Contact: ${settings?.contact_email || 'omaryw003@gmail.com'} • ${settings?.con
 Available properties:
 ${aptCatalog}
 
-When a user asks about properties, recommend specific ones from the list above by name and include the property id in this exact tag at the end of your message: [APT:<id>] for each recommendation (you can include multiple). Keep replies concise, warm, and helpful. If asked about booking, explain: pick a property, choose per-night or per-month, pay via M-Pesa Till 4097548, and admin approves bookings. For questions outside real-estate, politely steer back to bookings/properties.`;
+When a user asks about properties, recommend specific ones from the list above by name and include the property id in this exact tag at the end of your message: [APT:<id>] for each recommendation (you can include multiple). Keep replies concise, warm, and helpful. If asked about booking, explain: pick a property, choose per-night or per-month, and pay instantly via M-Pesa STK Push (we send a prompt to your phone — just enter your PIN). Admin then confirms the booking. For questions outside real-estate, politely steer back to bookings/properties.`;
 
     const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
