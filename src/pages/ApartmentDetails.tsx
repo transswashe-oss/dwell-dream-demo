@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MapPin, Bed, Calendar as CalendarIcon, CreditCard, Clock, Moon, ExternalLink } from "lucide-react";
+import { MapPin, Bed, Calendar as CalendarIcon, Smartphone, Clock, Moon, ExternalLink, Tag, Check, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -58,6 +58,11 @@ const ApartmentDetails = () => {
   const [checkInTime, setCheckInTime] = useState("14:00");
   const [nights, setNights] = useState(1);
   const [months, setMonths] = useState(1);
+  const [phone, setPhone] = useState("");
+  const [discountCode, setDiscountCode] = useState("");
+  const [discountInfo, setDiscountInfo] = useState<{ code: string; discountAmount: number; description?: string } | null>(null);
+  const [discountChecking, setDiscountChecking] = useState(false);
+  const [paymentStage, setPaymentStage] = useState<"idle" | "prompt" | "waiting" | "paid" | "failed">("idle");
 
   useEffect(() => {
     if (id) {
