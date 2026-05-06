@@ -3,10 +3,14 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const LIPANA_BASE = "https://api.lipana.dev";
+const LIPANA_ENDPOINTS = [
+  "https://api.lipana.dev/v1/transactions/push-stk",
+  "https://api.lipana.dev/v1/api/transactions/push-stk",
+  "https://api.lipana.dev/api/transactions/push-stk",
+];
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -24,59 +28,86 @@ Deno.serve(async (req) => {
     const user = userRes.user;
     if (!user) return json({ error: "Unauthorized" }, 401);
 
-    const body = await req.json();
+    const body = await req.json().catch(() => ({}));
     const { bookingId, phone, amount } = body ?? {};
-    if (!bookingId || !phone || !amount) return json({ error: "Missing bookingId, phone or amount" }, 400);
+    if (!bookingId || !phone || !amount) return json(paymentError("missing_fields", "Add your M-Pesa phone number before sending the payment prompt."));
 
     const normalizedPhone = normalizeMsisdn(String(phone));
-    if (!normalizedPhone) return json({ error: "Invalid phone number" }, 400);
+    if (!normalizedPhone) return json(paymentError("invalid_phone", "Enter a valid Safaricom M-Pesa number, for example 07XXXXXXXX."));
 
     const secret = Deno.env.get("LIPANA_SECRET_KEY");
-    if (!secret) return json({ error: "Payment provider not configured" }, 500);
+    if (!secret) return json(paymentError("provider_not_configured", "M-Pesa payments are not configured yet. Please contact Nyali Shore support."));
 
-    const callbackUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/lipana-callback`;
-
-    // LipaNa STK Push request
-    const stkRes = await fetch(`${LIPANA_BASE}/v1/stk/push`, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${secret}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        phone: normalizedPhone,
-        amount: Math.round(Number(amount)),
-        reference: bookingId,
-        description: `Nyali Shore Booking ${bookingId.slice(0, 8)}`,
-        callback_url: callbackUrl,
-      }),
-    });
-
-    const stkData = await stkRes.json().catch(() => ({}));
-    if (!stkRes.ok) {
-      console.error("LipaNa error:", stkRes.status, stkData);
-      return json({ error: stkData?.message || "Payment request failed", details: stkData }, stkRes.status);
-    }
-
-    const checkoutId = stkData.checkout_id || stkData.CheckoutRequestID || stkData.id || null;
-
-    // Persist checkout id on booking
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
+    const { data: booking, error: bookingError } = await admin
+      .from("bookings")
+      .select("id, user_id, total_amount")
+      .eq("id", bookingId)
+      .maybeSingle();
+    if (bookingError || !booking || booking.user_id !== user.id) {
+      return json(paymentError("booking_not_found", "We could not verify this booking. Please refresh and try again."));
+    }
+
+    const payableAmount = Math.round(Number(booking.total_amount || amount));
+    if (!Number.isFinite(payableAmount) || payableAmount < 10) {
+      return json(paymentError("invalid_amount", "The payable amount must be at least KSh 10 for M-Pesa STK Push."));
+    }
+
+    let stkData: Record<string, unknown> | null = null;
+    let stkStatus = 0;
+    let lastError: unknown = null;
+
+    for (const endpoint of LIPANA_ENDPOINTS) {
+      try {
+        const stkRes = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "x-api-key": secret,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            phone: `+${normalizedPhone}`,
+            amount: payableAmount,
+          }),
+          signal: AbortSignal.timeout(20_000),
+        });
+
+        stkStatus = stkRes.status;
+        stkData = await stkRes.json().catch(async () => ({ raw: await stkRes.text().catch(() => "") }));
+        if (stkRes.ok) break;
+        console.error("LipaNa error:", endpoint, stkRes.status, stkData);
+        if (stkRes.status !== 404) break;
+      } catch (err) {
+        lastError = err;
+        console.error("LipaNa request failed:", endpoint, err);
+      }
+    }
+
+    if (!stkStatus || stkStatus < 200 || stkStatus >= 300) {
+      await admin.from("bookings").update({ payment_status: "pending", phone_number: normalizedPhone }).eq("id", bookingId);
+      return json(paymentError(mapLipanaCode(stkStatus, stkData, lastError), friendlyLipanaMessage(stkStatus, stkData, lastError), true, stkData));
+    }
+
+    const payload = toRecord(stkData?.data) || stkData || {};
+    const checkoutId = getString(payload, "checkoutRequestID", "checkoutRequestId", "checkout_id", "CheckoutRequestID") || getString(stkData, "checkout_id", "id");
+    const transactionId = getString(payload, "transactionId", "transaction_id") || getString(stkData, "transactionId");
+
     await admin.from("bookings")
       .update({
         mpesa_checkout_id: checkoutId,
         phone_number: normalizedPhone,
-        payment_status: "prompt_sent",
+        transaction_code: transactionId,
+        payment_status: "pending",
       })
       .eq("id", bookingId);
 
-    return json({ success: true, checkoutId, message: "STK Push sent — check your phone and enter your M-Pesa PIN." });
-  } catch (e: any) {
+    return json({ success: true, checkoutId, transactionId, message: "STK Push sent — check your phone and enter your M-Pesa PIN." });
+  } catch (e: unknown) {
     console.error("STK push error:", e);
-    return json({ error: e?.message || "Unexpected error" }, 500);
+    return json(paymentError("service_error", "We could not send the M-Pesa prompt right now. Please try again in a minute.", true));
   }
 });
 
@@ -93,5 +124,48 @@ function normalizeMsisdn(p: string): string | null {
   if (digits.startsWith("0") && digits.length === 10) return "254" + digits.slice(1);
   if (digits.startsWith("7") && digits.length === 9) return "254" + digits;
   if (digits.startsWith("1") && digits.length === 9) return "254" + digits;
+  return null;
+}
+
+function paymentError(code: string, message: string, retryable = false, details?: unknown) {
+  return { success: false, error: code, code, message, retryable, details };
+}
+
+function mapLipanaCode(status: number, data: Record<string, unknown> | null, err: unknown) {
+  const text = `${getString(data, "message", "error", "raw") || err || ""}`.toLowerCase();
+  if (status === 401 || status === 403) return "provider_auth_failed";
+  if (status === 404) return "provider_endpoint_unavailable";
+  if (status === 408 || status === 429 || status >= 500 || text.includes("timeout")) return "provider_busy";
+  if (text.includes("amount")) return "invalid_amount";
+  if (text.includes("phone") || text.includes("msisdn")) return "invalid_phone";
+  if (text.includes("balance") || text.includes("insufficient")) return "insufficient_balance";
+  return "payment_prompt_failed";
+}
+
+function friendlyLipanaMessage(status: number, data: Record<string, unknown> | null, err: unknown) {
+  const code = mapLipanaCode(status, data, err);
+  const messages: Record<string, string> = {
+    provider_auth_failed: "M-Pesa payments need provider attention. Please contact Nyali Shore support.",
+    provider_endpoint_unavailable: "The payment provider endpoint was unavailable. Your booking is saved as pending; please try again shortly.",
+    provider_busy: "M-Pesa is taking too long to respond. Your booking is saved as pending; please try again in a minute.",
+    invalid_amount: "The payable amount could not be accepted by M-Pesa. Please contact support.",
+    invalid_phone: "M-Pesa could not accept that phone number. Use a Safaricom number like 07XXXXXXXX.",
+    insufficient_balance: "M-Pesa could not complete the prompt because the account may have insufficient balance.",
+    payment_prompt_failed: "We could not send the M-Pesa prompt. Confirm your phone number and try again.",
+  };
+  return messages[code] || messages.payment_prompt_failed;
+}
+
+function toRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" ? value as Record<string, unknown> : null;
+}
+
+function getString(value: unknown, ...keys: string[]) {
+  const obj = toRecord(value);
+  if (!obj) return null;
+  for (const key of keys) {
+    const item = obj[key];
+    if (typeof item === "string" && item.trim()) return item;
+  }
   return null;
 }

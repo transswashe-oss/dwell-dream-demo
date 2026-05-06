@@ -5,10 +5,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MapPin, Phone, Mail, MessageCircle, Award, Users, Heart, ShieldCheck, Compass, Waves } from "lucide-react";
 import coastalImg from "@/assets/coastal-living.jpg";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 const About = () => {
+  const { settings: s } = useSiteSettings();
   const handleWhatsApp = () => {
-    window.open("https://wa.me/254725409996", "_blank");
+    window.open(`https://wa.me/${s.whatsapp_number.replace(/\D/g, "")}`, "_blank");
   };
 
   return (
@@ -122,14 +124,14 @@ const About = () => {
               <CardContent className="p-8">
                 <MapPin className="h-12 w-12 text-primary mx-auto mb-4" />
                 <h3 className="text-xl font-semibold mb-2">Visit Us</h3>
-                <p className="text-muted-foreground">Nyali, Mombasa<br />Kenya</p>
+                <p className="text-muted-foreground whitespace-pre-line">{s.contact_address.replace(/,\s*/g, "\n")}</p>
               </CardContent>
             </Card>
             <Card className="text-center shadow-warm">
               <CardContent className="p-8">
                 <Phone className="h-12 w-12 text-primary mx-auto mb-4" />
                 <h3 className="text-xl font-semibold mb-2">Call Us</h3>
-                <p className="text-muted-foreground mb-4">+254 725 409 996</p>
+                <p className="text-muted-foreground mb-4">{s.contact_phone}</p>
                 <Button onClick={handleWhatsApp} variant="outline" size="sm">
                   <MessageCircle className="h-4 w-4 mr-2" />
                   WhatsApp
@@ -141,8 +143,8 @@ const About = () => {
                 <Mail className="h-12 w-12 text-primary mx-auto mb-4" />
                 <h3 className="text-xl font-semibold mb-2">Email Us</h3>
                 <p className="text-muted-foreground">
-                  <a href="mailto:omaryw003@gmail.com" className="hover:text-primary">
-                    omaryw003@gmail.com
+                  <a href={`mailto:${s.contact_email}`} className="hover:text-primary">
+                    {s.contact_email}
                   </a>
                 </p>
               </CardContent>

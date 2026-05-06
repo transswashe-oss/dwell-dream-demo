@@ -62,7 +62,9 @@ const ApartmentDetails = () => {
   const [discountCode, setDiscountCode] = useState("");
   const [discountInfo, setDiscountInfo] = useState<{ code: string; discountAmount: number; description?: string } | null>(null);
   const [discountChecking, setDiscountChecking] = useState(false);
-  const [paymentStage, setPaymentStage] = useState<"idle" | "prompt" | "waiting" | "paid" | "failed">("idle");
+  const [paymentStage, setPaymentStage] = useState<"idle" | "prompt" | "waiting" | "paid" | "failed" | "timeout">("idle");
+  const [paymentMessage, setPaymentMessage] = useState("");
+  const [bookingStep, setBookingStep] = useState<1 | 2 | 3>(1);
 
   useEffect(() => {
     if (id) {
@@ -125,8 +127,8 @@ const ApartmentDetails = () => {
       }
       setDiscountInfo({ code: data.code, discountAmount: data.discountAmount, description: data.description });
       toast({ title: "Discount applied!", description: `You saved KSh ${data.discountAmount.toLocaleString()}` });
-    } catch (e: any) {
-      toast({ title: "Error", description: e.message || "Could not validate code", variant: "destructive" });
+    } catch (e: unknown) {
+      toast({ title: "Error", description: getErrorMessage(e, "Could not validate code"), variant: "destructive" });
     } finally {
       setDiscountChecking(false);
     }
@@ -148,18 +150,56 @@ const ApartmentDetails = () => {
     setLightboxOpen(true);
   };
 
+  const getErrorMessage = (error: unknown, fallback: string) => error instanceof Error ? error.message : fallback;
+
+  const paymentErrorMessage = (error: unknown) =>
+    getErrorMessage(error, "We could not send the M-Pesa prompt. Confirm your phone number and try again.");
+
+  const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
   const pollPaymentStatus = async (bookingId: string): Promise<"paid" | "failed" | "timeout"> => {
-    const start = Date.now();
-    const TIMEOUT_MS = 90_000;
-    while (Date.now() - start < TIMEOUT_MS) {
-      await new Promise((r) => setTimeout(r, 3000));
+    const started = Date.now();
+    const timeoutMs = 120_000;
+    const delays = [2000, 3000, 5000, 8000, 13000, 21000, 30000];
+
+    for (let attempt = 0; Date.now() - started < timeoutMs; attempt += 1) {
+      await wait(delays[Math.min(attempt, delays.length - 1)]);
       try {
-        const { data } = await supabase.functions.invoke("lipana-status", { body: { bookingId } });
+        const { data, error } = await supabase.functions.invoke("lipana-status", { body: { bookingId } });
+        if (error) throw error;
         if (data?.payment_status === "paid") return "paid";
-        if (data?.payment_status === "failed") return "failed";
-      } catch (_) { /* keep polling */ }
+        if (data?.payment_status === "failed" || data?.payment_status === "cancelled") return "failed";
+        setPaymentMessage(data?.message || "Still waiting for M-Pesa confirmation…");
+      } catch {
+        setPaymentMessage("Still checking your payment. Network delays can take a moment…");
+      }
     }
+
     return "timeout";
+  };
+
+  const resetBookingForm = () => {
+    setShowBookingDialog(false);
+    setCheckInDate(undefined);
+    setNights(1);
+    setMonths(1);
+    setPhone("");
+    setPaymentStage("idle");
+    setPaymentMessage("");
+    setBookingStep(1);
+    removeDiscount();
+  };
+
+  const goNextBookingStep = () => {
+    if (bookingStep === 1) {
+      if (!checkInDate) {
+        toast({ title: "Choose a date", description: "Select your check-in or move-in date before continuing.", variant: "destructive" });
+        return;
+      }
+      setBookingStep(2);
+      return;
+    }
+    setBookingStep(3);
   };
 
   const handleBooking = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -168,22 +208,26 @@ const ApartmentDetails = () => {
 
     if (!phone.trim()) {
       toast({ title: "Phone number required", description: "Enter the M-Pesa phone number that will receive the STK push.", variant: "destructive" });
+      setBookingStep(3);
       return;
     }
 
     if (bookingType === 'monthly') {
       if (!apartment.monthly_price || apartment.monthly_price <= 0) {
         toast({ title: 'Monthly rental unavailable', description: 'This property is not available for monthly rental. Pick per-night instead.', variant: 'destructive' });
+        setBookingStep(1);
         return;
       }
       if (apartment.available === false) {
         toast({ title: 'Property unavailable', description: 'Sorry, this unit is currently unavailable for long-term rent.', variant: 'destructive' });
+        setBookingStep(1);
         return;
       }
     }
 
     setBookingLoading(true);
     setPaymentStage("prompt");
+    setPaymentMessage("Sending STK Push to your phone…");
 
     try {
       // 1. Create booking row first
@@ -213,17 +257,25 @@ const ApartmentDetails = () => {
       const { data: stk, error: stkErr } = await supabase.functions.invoke("lipana-stk-push", {
         body: { bookingId, phone, amount: totalAmount },
       });
-      if (stkErr || stk?.error) throw new Error(stk?.error || stkErr?.message || "STK push failed");
+      if (stkErr || stk?.success === false || stk?.error) throw new Error(stk?.message || paymentErrorMessage(stkErr));
 
       toast({ title: "Check your phone 📱", description: "Enter your M-Pesa PIN to complete the payment." });
       setPaymentStage("waiting");
+      setPaymentMessage("Waiting for you to enter your M-Pesa PIN…");
 
       // 3. Poll for confirmation
       const result = await pollPaymentStatus(bookingId);
       if (result === "paid") setPaymentStage("paid");
+      else if (result === "timeout") setPaymentStage("timeout");
       else setPaymentStage("failed");
 
-      const finalTxn = result === "paid" ? "(awaiting M-Pesa receipt)" : "";
+      const { data: finalBooking } = await supabase
+        .from("bookings")
+        .select("payment_status, mpesa_receipt, transaction_code, assigned_unit_number")
+        .eq("id", bookingId)
+        .maybeSingle();
+      const finalPaymentStatus = finalBooking?.payment_status || (result === "paid" ? "paid" : "pending");
+      const finalTxn = finalBooking?.mpesa_receipt || finalBooking?.transaction_code || stk?.transactionId || stk?.checkoutId || "Pending M-Pesa confirmation";
 
       // 4. Send notification email + receipt regardless (admin reviews)
       try {
@@ -246,52 +298,50 @@ const ApartmentDetails = () => {
         });
       } catch (emailError) { console.error('Email error:', emailError); }
 
-      // 5. Auto-generate PDF receipt
-      try {
-        const { generateInvoicePDF } = await import('@/lib/invoice');
-        const profileRes = await supabase.from('profiles').select('name').eq('user_id', user.id).single();
-        await generateInvoicePDF({
-          bookingId,
-          clientName: profileRes.data?.name || 'Guest',
-          clientEmail: user.email || '',
-          apartmentName: apartment.name,
-          apartmentLocation: apartment.location,
-          bookingType,
-          checkInDate: format(checkInDate, 'PPP'),
-          checkInTime,
-          duration,
-          unitPrice,
-          subtotalAmount,
-          discountCode: discountInfo?.code,
-          discountAmount: discountInfo?.discountAmount || 0,
-          totalAmount,
-          transactionCode: finalTxn,
-          status: result === "paid" ? "Paid" : "Pending",
-          unitNumber: inserted?.assigned_unit_number || apartment.unit_number,
-          createdAt: new Date().toISOString(),
-        });
-      } catch (pdfErr) { console.error('PDF generation failed:', pdfErr); }
+      if (finalPaymentStatus === "paid" || finalPaymentStatus === "pending") {
+        try {
+          const { generateInvoicePDF } = await import('@/lib/invoice');
+          const profileRes = await supabase.from('profiles').select('name').eq('user_id', user.id).single();
+          await generateInvoicePDF({
+            bookingId,
+            clientName: profileRes.data?.name || 'Guest',
+            clientEmail: user.email || '',
+            apartmentName: apartment.name,
+            apartmentLocation: apartment.location,
+            bookingType,
+            checkInDate: format(checkInDate, 'PPP'),
+            checkInTime,
+            duration,
+            unitPrice,
+            subtotalAmount,
+            discountCode: discountInfo?.code,
+            discountAmount: discountInfo?.discountAmount || 0,
+            totalAmount,
+            transactionCode: finalTxn,
+            status: finalPaymentStatus === "paid" ? "Paid" : "Pending / Unpaid",
+            unitNumber: finalBooking?.assigned_unit_number || inserted?.assigned_unit_number || apartment.unit_number,
+            createdAt: new Date().toISOString(),
+          });
+        } catch (pdfErr) { console.error('PDF generation failed:', pdfErr); }
+      }
 
       if (result === "paid") {
         toast({ title: "Payment received ✅", description: "Receipt downloaded. Admin will confirm shortly." });
       } else if (result === "failed") {
         toast({ title: "Payment not completed", description: "Your booking is saved as Pending. You can retry payment from My Bookings.", variant: "destructive" });
       } else {
-        toast({ title: "Still waiting…", description: "We didn't get confirmation in time. Receipt downloaded — check My Bookings later." });
+        toast({ title: "Payment still pending", description: "M-Pesa confirmation is taking longer than usual. Your booking is saved as Pending and the invoice downloaded." });
       }
 
-      setShowBookingDialog(false);
-      setCheckInDate(undefined);
-      setNights(1);
-      setMonths(1);
-      setPhone("");
-      removeDiscount();
-    } catch (error: any) {
+      resetBookingForm();
+    } catch (error: unknown) {
       console.error('Booking error:', error);
       setPaymentStage("failed");
+      const message = getErrorMessage(error, "Could not complete booking");
+      setPaymentMessage(message);
       toast({
-        title: "Error",
-        description: error.message || "Could not complete booking",
+        title: "Payment prompt not sent",
+        description: message,
         variant: "destructive",
       });
     } finally {
@@ -472,6 +522,18 @@ const ApartmentDetails = () => {
                         <DialogTitle>Book {apartment.name}</DialogTitle>
                       </DialogHeader>
                       <form onSubmit={handleBooking} className="space-y-4">
+                        <div className="grid grid-cols-3 gap-2 text-xs font-medium">
+                          {["Stay", "Review", "Pay"].map((label, index) => {
+                            const active = bookingStep === index + 1;
+                            return (
+                              <div key={label} className={`rounded-md border px-2 py-2 text-center ${active ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}>
+                                {index + 1}. {label}
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        <div className={bookingStep === 1 ? "space-y-4" : "hidden"}>
                         <div className="space-y-2">
                           <Label>Property</Label>
                           <Input value={apartment.name} disabled />
@@ -566,8 +628,10 @@ const ApartmentDetails = () => {
                             />
                           </div>
                         )}
+                        </div>
 
                         {/* Discount code */}
+                        <div className={bookingStep === 2 ? "space-y-4" : "hidden"}>
                         <div className="space-y-2">
                           <Label className="flex items-center gap-2"><Tag className="h-4 w-4" /> Discount Code (optional)</Label>
                           {discountInfo ? (
@@ -605,8 +669,10 @@ const ApartmentDetails = () => {
                             <span className="text-primary">KSh {totalAmount.toLocaleString()}</span>
                           </div>
                         </div>
+                        </div>
 
                         {/* M-Pesa phone */}
+                        <div className={bookingStep === 3 ? "space-y-4" : "hidden"}>
                         <div className="space-y-2">
                           <Label htmlFor="phone" className="flex items-center gap-2"><Smartphone className="h-4 w-4" /> M-Pesa Phone Number *</Label>
                           <Input
@@ -626,6 +692,7 @@ const ApartmentDetails = () => {
                           <div className={`rounded-md px-3 py-2 text-sm flex items-center gap-2 ${
                             paymentStage === "paid" ? "bg-green-500/10 text-green-700 dark:text-green-400" :
                             paymentStage === "failed" ? "bg-destructive/10 text-destructive" :
+                            paymentStage === "timeout" ? "bg-secondary text-secondary-foreground" :
                             "bg-primary/10 text-primary"
                           }`}>
                             {paymentStage === "paid" ? <Check className="h-4 w-4" /> :
@@ -635,26 +702,31 @@ const ApartmentDetails = () => {
                             {paymentStage === "waiting" && "Waiting for you to enter your M-Pesa PIN…"}
                             {paymentStage === "paid" && "Payment confirmed!"}
                             {paymentStage === "failed" && "Payment not completed. You can retry."}
+                            {paymentStage === "timeout" && "Payment confirmation is taking longer than usual."}
+                            {paymentMessage && <span className="text-muted-foreground">{paymentMessage}</span>}
                           </div>
                         )}
+                        </div>
 
                         <div className="flex gap-2">
                           <Button
                             type="button"
                             variant="outline"
-                            onClick={() => setShowBookingDialog(false)}
+                            onClick={() => bookingStep === 1 ? setShowBookingDialog(false) : setBookingStep((bookingStep - 1) as 1 | 2 | 3)}
                             className="flex-1"
                             disabled={bookingLoading}
                           >
-                            Cancel
+                            {bookingStep === 1 ? "Cancel" : "Back"}
                           </Button>
-                          <Button
-                            type="submit"
-                            disabled={bookingLoading || !checkInDate}
-                            className="flex-1 ocean-gradient"
-                          >
-                            {bookingLoading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Processing…</> : <>Pay KSh {totalAmount.toLocaleString()}</>}
-                          </Button>
+                          {bookingStep < 3 ? (
+                            <Button type="button" onClick={goNextBookingStep} className="flex-1 ocean-gradient">
+                              Continue
+                            </Button>
+                          ) : (
+                            <Button type="submit" disabled={bookingLoading || !checkInDate} className="flex-1 ocean-gradient">
+                              {bookingLoading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Processing…</> : <>Pay KSh {totalAmount.toLocaleString()}</>}
+                            </Button>
+                          )}
                         </div>
                       </form>
                     </DialogContent>
