@@ -8,6 +8,7 @@ const corsHeaders = {
 
 const LIPANA_ENDPOINTS = [
   "https://api.lipana.dev/v1/transactions/push-stk",
+  "https://api.lipana.dev/v1/api/transactions/push-stk",
   "https://api.lipana.dev/api/transactions/push-stk",
 ];
 
