@@ -3,5 +3,11 @@ project_id = "xfrpauvnxgrpbhcuwtgw"
 [functions.lipana-callback]
 verify_jwt = false
 
+[functions.lipana-stk-push]
+verify_jwt = false
+
+[functions.lipana-status]
+verify_jwt = false
+
 [functions.validate-discount]
 verify_jwt = false
