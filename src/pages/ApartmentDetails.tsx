@@ -519,6 +519,18 @@ const ApartmentDetails = () => {
                         <DialogTitle>Book {apartment.name}</DialogTitle>
                       </DialogHeader>
                       <form onSubmit={handleBooking} className="space-y-4">
+                        <div className="grid grid-cols-3 gap-2 text-xs font-medium">
+                          {["Stay", "Review", "Pay"].map((label, index) => {
+                            const active = bookingStep === index + 1;
+                            return (
+                              <div key={label} className={`rounded-md border px-2 py-2 text-center ${active ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}>
+                                {index + 1}. {label}
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        <div className={bookingStep === 1 ? "space-y-4" : "hidden"}>
                         <div className="space-y-2">
                           <Label>Property</Label>
                           <Input value={apartment.name} disabled />
@@ -613,8 +625,10 @@ const ApartmentDetails = () => {
                             />
                           </div>
                         )}
+                        </div>
 
                         {/* Discount code */}
+                        <div className={bookingStep === 2 ? "space-y-4" : "hidden"}>
                         <div className="space-y-2">
                           <Label className="flex items-center gap-2"><Tag className="h-4 w-4" /> Discount Code (optional)</Label>
                           {discountInfo ? (
@@ -652,8 +666,10 @@ const ApartmentDetails = () => {
                             <span className="text-primary">KSh {totalAmount.toLocaleString()}</span>
                           </div>
                         </div>
+                        </div>
 
                         {/* M-Pesa phone */}
+                        <div className={bookingStep === 3 ? "space-y-4" : "hidden"}>
                         <div className="space-y-2">
                           <Label htmlFor="phone" className="flex items-center gap-2"><Smartphone className="h-4 w-4" /> M-Pesa Phone Number *</Label>
                           <Input
