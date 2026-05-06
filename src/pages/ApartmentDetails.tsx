@@ -127,8 +127,8 @@ const ApartmentDetails = () => {
       }
       setDiscountInfo({ code: data.code, discountAmount: data.discountAmount, description: data.description });
       toast({ title: "Discount applied!", description: `You saved KSh ${data.discountAmount.toLocaleString()}` });
-    } catch (e: any) {
-      toast({ title: "Error", description: e.message || "Could not validate code", variant: "destructive" });
+    } catch (e: unknown) {
+      toast({ title: "Error", description: getErrorMessage(e, "Could not validate code"), variant: "destructive" });
     } finally {
       setDiscountChecking(false);
     }
@@ -150,8 +150,10 @@ const ApartmentDetails = () => {
     setLightboxOpen(true);
   };
 
-  const paymentErrorMessage = (error: any) =>
-    error?.message || error?.details?.message || "We could not send the M-Pesa prompt. Confirm your phone number and try again.";
+  const getErrorMessage = (error: unknown, fallback: string) => error instanceof Error ? error.message : fallback;
+
+  const paymentErrorMessage = (error: unknown) =>
+    getErrorMessage(error, "We could not send the M-Pesa prompt. Confirm your phone number and try again.");
 
   const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -332,13 +334,14 @@ const ApartmentDetails = () => {
       }
 
       resetBookingForm();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Booking error:', error);
       setPaymentStage("failed");
-      setPaymentMessage(error.message || "Could not complete booking");
+      const message = getErrorMessage(error, "Could not complete booking");
+      setPaymentMessage(message);
       toast({
         title: "Payment prompt not sent",
-        description: error.message || "Could not complete booking",
+        description: message,
         variant: "destructive",
       });
     } finally {
