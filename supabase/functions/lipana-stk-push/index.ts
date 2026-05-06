@@ -125,3 +125,32 @@ function normalizeMsisdn(p: string): string | null {
   if (digits.startsWith("1") && digits.length === 9) return "254" + digits;
   return null;
 }
+
+function paymentError(code: string, message: string, retryable = false, details?: unknown) {
+  return { success: false, error: code, code, message, retryable, details };
+}
+
+function mapLipanaCode(status: number, data: any, err: unknown) {
+  const text = `${data?.message || data?.error || data?.raw || err || ""}`.toLowerCase();
+  if (status === 401 || status === 403) return "provider_auth_failed";
+  if (status === 404) return "provider_endpoint_unavailable";
+  if (status === 408 || status === 429 || status >= 500 || text.includes("timeout")) return "provider_busy";
+  if (text.includes("amount")) return "invalid_amount";
+  if (text.includes("phone") || text.includes("msisdn")) return "invalid_phone";
+  if (text.includes("balance") || text.includes("insufficient")) return "insufficient_balance";
+  return "payment_prompt_failed";
+}
+
+function friendlyLipanaMessage(status: number, data: any, err: unknown) {
+  const code = mapLipanaCode(status, data, err);
+  const messages: Record<string, string> = {
+    provider_auth_failed: "M-Pesa payments need provider attention. Please contact Nyali Shore support.",
+    provider_endpoint_unavailable: "The payment provider endpoint was unavailable. Your booking is saved as pending; please try again shortly.",
+    provider_busy: "M-Pesa is taking too long to respond. Your booking is saved as pending; please try again in a minute.",
+    invalid_amount: "The payable amount could not be accepted by M-Pesa. Please contact support.",
+    invalid_phone: "M-Pesa could not accept that phone number. Use a Safaricom number like 07XXXXXXXX.",
+    insufficient_balance: "M-Pesa could not complete the prompt because the account may have insufficient balance.",
+    payment_prompt_failed: "We could not send the M-Pesa prompt. Confirm your phone number and try again.",
+  };
+  return messages[code] || messages.payment_prompt_failed;
+}
