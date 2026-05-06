@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 Deno.serve(async (req) => {
@@ -15,17 +15,19 @@ Deno.serve(async (req) => {
 
     // Try common field shapes
     const checkoutId =
-      payload.checkout_id || payload.CheckoutRequestID ||
-      payload.data?.checkout_id || payload.data?.CheckoutRequestID || null;
+      payload.checkout_id || payload.CheckoutRequestID || payload.checkoutRequestID ||
+      payload.data?.checkout_id || payload.data?.CheckoutRequestID || payload.data?.checkoutRequestID || null;
     const reference =
       payload.reference || payload.bookingId ||
       payload.data?.reference || payload.metadata?.reference || null;
-    const status = String(payload.status || payload.result || payload.data?.status || "").toLowerCase();
+    const transactionId = payload.transactionId || payload.transaction_id || payload.data?.transactionId || payload.data?.transaction_id || null;
+    const status = String(payload.status || payload.result || payload.event || payload.data?.status || "").toLowerCase();
     const receipt =
       payload.mpesa_receipt || payload.receipt || payload.MpesaReceiptNumber ||
       payload.data?.mpesa_receipt || payload.data?.receipt || null;
     const success =
-      payload.success === true || status === "success" || status === "completed" || status === "paid" || !!receipt;
+      payload.success === true || status.includes("success") || status === "completed" || status === "paid" || !!receipt;
+    const failed = status.includes("failed") || status.includes("cancel") || payload.success === false;
 
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -48,9 +50,9 @@ Deno.serve(async (req) => {
     }
 
     await admin.from("bookings").update({
-      payment_status: success ? "paid" : "failed",
+      payment_status: success ? "paid" : (failed ? "failed" : "pending"),
       mpesa_receipt: receipt || null,
-      transaction_code: receipt || booking.transaction_code,
+      transaction_code: receipt || transactionId || booking.transaction_code,
     }).eq("id", booking.id);
 
     return new Response(JSON.stringify({ ok: true }), {
