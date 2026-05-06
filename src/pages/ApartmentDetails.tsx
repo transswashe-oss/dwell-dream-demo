@@ -689,6 +689,7 @@ const ApartmentDetails = () => {
                           <div className={`rounded-md px-3 py-2 text-sm flex items-center gap-2 ${
                             paymentStage === "paid" ? "bg-green-500/10 text-green-700 dark:text-green-400" :
                             paymentStage === "failed" ? "bg-destructive/10 text-destructive" :
+                            paymentStage === "timeout" ? "bg-secondary text-secondary-foreground" :
                             "bg-primary/10 text-primary"
                           }`}>
                             {paymentStage === "paid" ? <Check className="h-4 w-4" /> :
@@ -698,26 +699,31 @@ const ApartmentDetails = () => {
                             {paymentStage === "waiting" && "Waiting for you to enter your M-Pesa PIN…"}
                             {paymentStage === "paid" && "Payment confirmed!"}
                             {paymentStage === "failed" && "Payment not completed. You can retry."}
+                            {paymentStage === "timeout" && "Payment confirmation is taking longer than usual."}
+                            {paymentMessage && <span className="text-muted-foreground">{paymentMessage}</span>}
                           </div>
                         )}
+                        </div>
 
                         <div className="flex gap-2">
                           <Button
                             type="button"
                             variant="outline"
-                            onClick={() => setShowBookingDialog(false)}
+                            onClick={() => bookingStep === 1 ? setShowBookingDialog(false) : setBookingStep((bookingStep - 1) as 1 | 2 | 3)}
                             className="flex-1"
                             disabled={bookingLoading}
                           >
-                            Cancel
+                            {bookingStep === 1 ? "Cancel" : "Back"}
                           </Button>
-                          <Button
-                            type="submit"
-                            disabled={bookingLoading || !checkInDate}
-                            className="flex-1 ocean-gradient"
-                          >
-                            {bookingLoading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Processing…</> : <>Pay KSh {totalAmount.toLocaleString()}</>}
-                          </Button>
+                          {bookingStep < 3 ? (
+                            <Button type="button" onClick={goNextBookingStep} className="flex-1 ocean-gradient">
+                              Continue
+                            </Button>
+                          ) : (
+                            <Button type="submit" disabled={bookingLoading || !checkInDate} className="flex-1 ocean-gradient">
+                              {bookingLoading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Processing…</> : <>Pay KSh {totalAmount.toLocaleString()}</>}
+                            </Button>
+                          )}
                         </div>
                       </form>
                     </DialogContent>
