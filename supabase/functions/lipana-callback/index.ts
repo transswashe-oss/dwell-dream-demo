@@ -10,21 +10,23 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const payload = await req.json().catch(() => ({} as any));
+    const payload = toRecord(await req.json().catch(() => ({}))) || {};
     console.log("LipaNa callback:", JSON.stringify(payload));
+    const data = toRecord(payload.data) || {};
+    const metadata = toRecord(payload.metadata) || {};
 
     // Try common field shapes
     const checkoutId =
       payload.checkout_id || payload.CheckoutRequestID || payload.checkoutRequestID ||
-      payload.data?.checkout_id || payload.data?.CheckoutRequestID || payload.data?.checkoutRequestID || null;
+      data.checkout_id || data.CheckoutRequestID || data.checkoutRequestID || null;
     const reference =
       payload.reference || payload.bookingId ||
-      payload.data?.reference || payload.metadata?.reference || null;
-    const transactionId = payload.transactionId || payload.transaction_id || payload.data?.transactionId || payload.data?.transaction_id || null;
-    const status = String(payload.status || payload.result || payload.event || payload.data?.status || "").toLowerCase();
+      data.reference || metadata.reference || null;
+    const transactionId = payload.transactionId || payload.transaction_id || data.transactionId || data.transaction_id || null;
+    const status = String(payload.status || payload.result || payload.event || data.status || "").toLowerCase();
     const receipt =
       payload.mpesa_receipt || payload.receipt || payload.MpesaReceiptNumber ||
-      payload.data?.mpesa_receipt || payload.data?.receipt || null;
+      data.mpesa_receipt || data.receipt || null;
     const success =
       payload.success === true || status.includes("success") || status === "completed" || status === "paid" || !!receipt;
     const failed = status.includes("failed") || status.includes("cancel") || payload.success === false;
@@ -58,11 +60,15 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ ok: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("Callback error:", e);
-    return new Response(JSON.stringify({ ok: false, error: e?.message }), {
+    return new Response(JSON.stringify({ ok: false, error: e instanceof Error ? e.message : "Callback error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
+
+function toRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" ? value as Record<string, unknown> : null;
+}
