@@ -27,6 +27,8 @@ interface Booking {
   booking_type: string;
   assigned_unit_number: string | null;
   total_amount: number | null;
+  payment_status: string;
+  mpesa_receipt: string | null;
   apartment: {
     id: string;
     name: string;
@@ -113,8 +115,8 @@ const MyBookings = () => {
         duration: isMonthly ? (b.months || 1) : (b.nights || 1),
         unitPrice: isMonthly ? (b.apartment.monthly_price || 0) : b.apartment.price,
         totalAmount: b.total_amount || 0,
-        transactionCode: b.transaction_code,
-        status: b.status,
+        transactionCode: b.mpesa_receipt || b.transaction_code || 'Pending M-Pesa confirmation',
+        status: b.payment_status === 'paid' ? 'Paid' : (b.payment_status === 'pending' ? 'Pending / Unpaid' : b.status),
         unitNumber: b.assigned_unit_number || b.apartment.unit_number || undefined,
         createdAt: b.created_at,
       });
