@@ -32,8 +32,8 @@ const PaymentsManagement = () => {
         .order("created_at", { ascending: false });
       if (error) throw error;
       setPayments((data || []) as PaymentBooking[]);
-    } catch (error: any) {
-      toast({ title: "Error", description: error.message || "Could not load payments", variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Error", description: error instanceof Error ? error.message : "Could not load payments", variant: "destructive" });
     } finally {
       setLoading(false);
     }
