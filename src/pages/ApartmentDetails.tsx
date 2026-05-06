@@ -194,22 +194,26 @@ const ApartmentDetails = () => {
 
     if (!phone.trim()) {
       toast({ title: "Phone number required", description: "Enter the M-Pesa phone number that will receive the STK push.", variant: "destructive" });
+      setBookingStep(3);
       return;
     }
 
     if (bookingType === 'monthly') {
       if (!apartment.monthly_price || apartment.monthly_price <= 0) {
         toast({ title: 'Monthly rental unavailable', description: 'This property is not available for monthly rental. Pick per-night instead.', variant: 'destructive' });
+        setBookingStep(1);
         return;
       }
       if (apartment.available === false) {
         toast({ title: 'Property unavailable', description: 'Sorry, this unit is currently unavailable for long-term rent.', variant: 'destructive' });
+        setBookingStep(1);
         return;
       }
     }
 
     setBookingLoading(true);
     setPaymentStage("prompt");
+    setPaymentMessage("Sending STK Push to your phone…");
 
     try {
       // 1. Create booking row first
@@ -239,17 +243,25 @@ const ApartmentDetails = () => {
       const { data: stk, error: stkErr } = await supabase.functions.invoke("lipana-stk-push", {
         body: { bookingId, phone, amount: totalAmount },
       });
-      if (stkErr || stk?.error) throw new Error(stk?.error || stkErr?.message || "STK push failed");
+      if (stkErr || stk?.success === false || stk?.error) throw new Error(stk?.message || paymentErrorMessage(stkErr));
 
       toast({ title: "Check your phone 📱", description: "Enter your M-Pesa PIN to complete the payment." });
       setPaymentStage("waiting");
+      setPaymentMessage("Waiting for you to enter your M-Pesa PIN…");
 
       // 3. Poll for confirmation
       const result = await pollPaymentStatus(bookingId);
       if (result === "paid") setPaymentStage("paid");
+      else if (result === "timeout") setPaymentStage("timeout");
       else setPaymentStage("failed");
 
-      const finalTxn = result === "paid" ? "(awaiting M-Pesa receipt)" : "";
+      const { data: finalBooking } = await supabase
+        .from("bookings")
+        .select("payment_status, mpesa_receipt, transaction_code, assigned_unit_number")
+        .eq("id", bookingId)
+        .maybeSingle();
+      const finalPaymentStatus = finalBooking?.payment_status || (result === "paid" ? "paid" : "pending");
+      const finalTxn = finalBooking?.mpesa_receipt || finalBooking?.transaction_code || stk?.transactionId || stk?.checkoutId || "Pending M-Pesa confirmation";
 
       // 4. Send notification email + receipt regardless (admin reviews)
       try {
@@ -272,51 +284,48 @@ const ApartmentDetails = () => {
         });
       } catch (emailError) { console.error('Email error:', emailError); }
 
-      // 5. Auto-generate PDF receipt
-      try {
-        const { generateInvoicePDF } = await import('@/lib/invoice');
-        const profileRes = await supabase.from('profiles').select('name').eq('user_id', user.id).single();
-        await generateInvoicePDF({
-          bookingId,
-          clientName: profileRes.data?.name || 'Guest',
-          clientEmail: user.email || '',
-          apartmentName: apartment.name,
-          apartmentLocation: apartment.location,
-          bookingType,
-          checkInDate: format(checkInDate, 'PPP'),
-          checkInTime,
-          duration,
-          unitPrice,
-          subtotalAmount,
-          discountCode: discountInfo?.code,
-          discountAmount: discountInfo?.discountAmount || 0,
-          totalAmount,
-          transactionCode: finalTxn,
-          status: result === "paid" ? "Paid" : "Pending",
-          unitNumber: inserted?.assigned_unit_number || apartment.unit_number,
-          createdAt: new Date().toISOString(),
-        });
-      } catch (pdfErr) { console.error('PDF generation failed:', pdfErr); }
+      if (finalPaymentStatus === "paid" || finalPaymentStatus === "pending") {
+        try {
+          const { generateInvoicePDF } = await import('@/lib/invoice');
+          const profileRes = await supabase.from('profiles').select('name').eq('user_id', user.id).single();
+          await generateInvoicePDF({
+            bookingId,
+            clientName: profileRes.data?.name || 'Guest',
+            clientEmail: user.email || '',
+            apartmentName: apartment.name,
+            apartmentLocation: apartment.location,
+            bookingType,
+            checkInDate: format(checkInDate, 'PPP'),
+            checkInTime,
+            duration,
+            unitPrice,
+            subtotalAmount,
+            discountCode: discountInfo?.code,
+            discountAmount: discountInfo?.discountAmount || 0,
+            totalAmount,
+            transactionCode: finalTxn,
+            status: finalPaymentStatus === "paid" ? "Paid" : "Pending / Unpaid",
+            unitNumber: finalBooking?.assigned_unit_number || inserted?.assigned_unit_number || apartment.unit_number,
+            createdAt: new Date().toISOString(),
+          });
+        } catch (pdfErr) { console.error('PDF generation failed:', pdfErr); }
+      }
 
       if (result === "paid") {
         toast({ title: "Payment received ✅", description: "Receipt downloaded. Admin will confirm shortly." });
       } else if (result === "failed") {
         toast({ title: "Payment not completed", description: "Your booking is saved as Pending. You can retry payment from My Bookings.", variant: "destructive" });
       } else {
-        toast({ title: "Still waiting…", description: "We didn't get confirmation in time. Receipt downloaded — check My Bookings later." });
+        toast({ title: "Payment still pending", description: "M-Pesa confirmation is taking longer than usual. Your booking is saved as Pending and the invoice downloaded." });
       }
 
-      setShowBookingDialog(false);
-      setCheckInDate(undefined);
-      setNights(1);
-      setMonths(1);
-      setPhone("");
-      removeDiscount();
+      resetBookingForm();
     } catch (error: any) {
       console.error('Booking error:', error);
       setPaymentStage("failed");
+      setPaymentMessage(error.message || "Could not complete booking");
       toast({
-        title: "Error",
+        title: "Payment prompt not sent",
         description: error.message || "Could not complete booking",
         variant: "destructive",
       });
