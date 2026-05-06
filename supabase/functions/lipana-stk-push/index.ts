@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
       return json(paymentError("invalid_amount", "The payable amount must be at least KSh 10 for M-Pesa STK Push."));
     }
 
-    let stkData: any = null;
+    let stkData: Record<string, unknown> | null = null;
     let stkStatus = 0;
     let lastError: unknown = null;
 
@@ -91,9 +91,9 @@ Deno.serve(async (req) => {
       return json(paymentError(mapLipanaCode(stkStatus, stkData, lastError), friendlyLipanaMessage(stkStatus, stkData, lastError), true, stkData));
     }
 
-    const payload = stkData?.data || stkData || {};
-    const checkoutId = payload.checkoutRequestID || payload.checkoutRequestId || payload.checkout_id || payload.CheckoutRequestID || stkData.checkout_id || stkData.id || null;
-    const transactionId = payload.transactionId || payload.transaction_id || stkData.transactionId || null;
+    const payload = toRecord(stkData?.data) || stkData || {};
+    const checkoutId = getString(payload, "checkoutRequestID", "checkoutRequestId", "checkout_id", "CheckoutRequestID") || getString(stkData, "checkout_id", "id");
+    const transactionId = getString(payload, "transactionId", "transaction_id") || getString(stkData, "transactionId");
 
     await admin.from("bookings")
       .update({
@@ -105,7 +105,7 @@ Deno.serve(async (req) => {
       .eq("id", bookingId);
 
     return json({ success: true, checkoutId, transactionId, message: "STK Push sent — check your phone and enter your M-Pesa PIN." });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("STK push error:", e);
     return json(paymentError("service_error", "We could not send the M-Pesa prompt right now. Please try again in a minute.", true));
   }
@@ -131,8 +131,8 @@ function paymentError(code: string, message: string, retryable = false, details?
   return { success: false, error: code, code, message, retryable, details };
 }
 
-function mapLipanaCode(status: number, data: any, err: unknown) {
-  const text = `${data?.message || data?.error || data?.raw || err || ""}`.toLowerCase();
+function mapLipanaCode(status: number, data: Record<string, unknown> | null, err: unknown) {
+  const text = `${getString(data, "message", "error", "raw") || err || ""}`.toLowerCase();
   if (status === 401 || status === 403) return "provider_auth_failed";
   if (status === 404) return "provider_endpoint_unavailable";
   if (status === 408 || status === 429 || status >= 500 || text.includes("timeout")) return "provider_busy";
@@ -142,7 +142,7 @@ function mapLipanaCode(status: number, data: any, err: unknown) {
   return "payment_prompt_failed";
 }
 
-function friendlyLipanaMessage(status: number, data: any, err: unknown) {
+function friendlyLipanaMessage(status: number, data: Record<string, unknown> | null, err: unknown) {
   const code = mapLipanaCode(status, data, err);
   const messages: Record<string, string> = {
     provider_auth_failed: "M-Pesa payments need provider attention. Please contact Nyali Shore support.",
@@ -154,4 +154,18 @@ function friendlyLipanaMessage(status: number, data: any, err: unknown) {
     payment_prompt_failed: "We could not send the M-Pesa prompt. Confirm your phone number and try again.",
   };
   return messages[code] || messages.payment_prompt_failed;
+}
+
+function toRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" ? value as Record<string, unknown> : null;
+}
+
+function getString(value: unknown, ...keys: string[]) {
+  const obj = toRecord(value);
+  if (!obj) return null;
+  for (const key of keys) {
+    const item = obj[key];
+    if (typeof item === "string" && item.trim()) return item;
+  }
+  return null;
 }
