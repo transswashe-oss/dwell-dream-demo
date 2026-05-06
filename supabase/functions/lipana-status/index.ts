@@ -33,8 +33,8 @@ Deno.serve(async (req) => {
       ...(data || {}),
       message: statusMessage(data?.payment_status),
     });
-  } catch (e: any) {
-    return j({ error: e?.message || "error" }, 500);
+  } catch (e: unknown) {
+    return j({ error: e instanceof Error ? e.message : "error" }, 500);
   }
 });
 
