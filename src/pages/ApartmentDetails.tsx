@@ -188,6 +188,18 @@ const ApartmentDetails = () => {
     removeDiscount();
   };
 
+  const goNextBookingStep = () => {
+    if (bookingStep === 1) {
+      if (!checkInDate) {
+        toast({ title: "Choose a date", description: "Select your check-in or move-in date before continuing.", variant: "destructive" });
+        return;
+      }
+      setBookingStep(2);
+      return;
+    }
+    setBookingStep(3);
+  };
+
   const handleBooking = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!user || !apartment || !checkInDate) return;
