@@ -62,7 +62,9 @@ const ApartmentDetails = () => {
   const [discountCode, setDiscountCode] = useState("");
   const [discountInfo, setDiscountInfo] = useState<{ code: string; discountAmount: number; description?: string } | null>(null);
   const [discountChecking, setDiscountChecking] = useState(false);
-  const [paymentStage, setPaymentStage] = useState<"idle" | "prompt" | "waiting" | "paid" | "failed">("idle");
+  const [paymentStage, setPaymentStage] = useState<"idle" | "prompt" | "waiting" | "paid" | "failed" | "timeout">("idle");
+  const [paymentMessage, setPaymentMessage] = useState("");
+  const [bookingStep, setBookingStep] = useState<1 | 2 | 3>(1);
 
   useEffect(() => {
     if (id) {
@@ -148,18 +150,42 @@ const ApartmentDetails = () => {
     setLightboxOpen(true);
   };
 
+  const paymentErrorMessage = (error: any) =>
+    error?.message || error?.details?.message || "We could not send the M-Pesa prompt. Confirm your phone number and try again.";
+
+  const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
   const pollPaymentStatus = async (bookingId: string): Promise<"paid" | "failed" | "timeout"> => {
-    const start = Date.now();
-    const TIMEOUT_MS = 90_000;
-    while (Date.now() - start < TIMEOUT_MS) {
-      await new Promise((r) => setTimeout(r, 3000));
+    const started = Date.now();
+    const timeoutMs = 120_000;
+    const delays = [2000, 3000, 5000, 8000, 13000, 21000, 30000];
+
+    for (let attempt = 0; Date.now() - started < timeoutMs; attempt += 1) {
+      await wait(delays[Math.min(attempt, delays.length - 1)]);
       try {
-        const { data } = await supabase.functions.invoke("lipana-status", { body: { bookingId } });
+        const { data, error } = await supabase.functions.invoke("lipana-status", { body: { bookingId } });
+        if (error) throw error;
         if (data?.payment_status === "paid") return "paid";
-        if (data?.payment_status === "failed") return "failed";
-      } catch (_) { /* keep polling */ }
+        if (data?.payment_status === "failed" || data?.payment_status === "cancelled") return "failed";
+        setPaymentMessage(data?.message || "Still waiting for M-Pesa confirmation…");
+      } catch {
+        setPaymentMessage("Still checking your payment. Network delays can take a moment…");
+      }
     }
+
     return "timeout";
+  };
+
+  const resetBookingForm = () => {
+    setShowBookingDialog(false);
+    setCheckInDate(undefined);
+    setNights(1);
+    setMonths(1);
+    setPhone("");
+    setPaymentStage("idle");
+    setPaymentMessage("");
+    setBookingStep(1);
+    removeDiscount();
   };
 
   const handleBooking = async (e: React.FormEvent<HTMLFormElement>) => {
