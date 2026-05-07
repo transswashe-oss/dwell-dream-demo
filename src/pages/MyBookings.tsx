@@ -14,12 +14,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { generateInvoicePDF } from "@/lib/invoice";
 import { useToast } from "@/hooks/use-toast";
+import BookingTimeline from "@/components/BookingTimeline";
 
 interface Booking {
   id: string;
   transaction_code: string;
   status: string;
   created_at: string;
+  updated_at: string;
   check_in_date: string | null;
   check_in_time: string | null;
   nights: number | null;
@@ -302,6 +304,12 @@ const MyBookings = () => {
                         </p>
                       </div>
                     )}
+                    <BookingTimeline
+                      createdAt={booking.created_at}
+                      updatedAt={booking.updated_at}
+                      paymentStatus={booking.payment_status}
+                      hasInvoice={booking.payment_status === 'paid' || booking.payment_status === 'pending'}
+                    />
                   </CardContent>
                 </Card>
               );
