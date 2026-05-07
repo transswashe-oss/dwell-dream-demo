@@ -111,10 +111,23 @@ const ApartmentsManagement = () => {
         galleryImageUrls = await Promise.all(uploadPromises);
       }
     
+      const locationVal = (formData.get('location') as string)?.trim();
+      let mapsUrl = (formData.get('google_maps_url') as string)?.trim() || null;
+
+      // Auto-generate Google Maps URL from location using Lovable AI when not provided
+      if (!mapsUrl && locationVal) {
+        try {
+          const { data: mapsData } = await supabase.functions.invoke('generate-maps-url', { body: { location: locationVal } });
+          if (mapsData?.google_maps_url) mapsUrl = mapsData.google_maps_url;
+        } catch (mapErr) {
+          console.warn('Auto maps generation failed:', mapErr);
+        }
+      }
+
       const apartmentData = {
         name: (formData.get('name') as string)?.trim(),
         type: 'Airbnb',
-        location: (formData.get('location') as string)?.trim(),
+        location: locationVal,
         price: parseFloat(formData.get('price') as string) || 0,
         monthly_price: parseFloat(formData.get('monthly_price') as string) || 0,
         unit_number: (formData.get('unit_number') as string)?.trim() || null,
@@ -124,7 +137,7 @@ const ApartmentsManagement = () => {
         display_image: displayImageUrl || null,
         gallery_images: galleryImageUrls.length > 0 ? galleryImageUrls : null,
         featured: formData.get('featured') === 'on',
-        google_maps_url: (formData.get('google_maps_url') as string)?.trim() || null,
+        google_maps_url: mapsUrl,
       };
 
       if (!apartmentData.name || !apartmentData.location) {
@@ -325,13 +338,13 @@ const ApartmentsManagement = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="google_maps_url">Google Maps URL</Label>
+                <Label htmlFor="google_maps_url">Google Maps URL <span className="text-xs text-muted-foreground">(optional — auto-generated from location via AI)</span></Label>
                 <Input
                   id="google_maps_url"
                   name="google_maps_url"
                   type="url"
                   defaultValue={editingApartment?.google_maps_url}
-                  placeholder="https://maps.google.com/..."
+                  placeholder="Leave empty to auto-fill"
                 />
               </div>
 
