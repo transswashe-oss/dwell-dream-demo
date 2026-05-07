@@ -26,6 +26,7 @@ import TestimonialsManagement from "./TestimonialsManagement";
 import DiscountsManagement from "./DiscountsManagement";
 import SiteSettingsManagement from "./SiteSettingsManagement";
 import PaymentsManagement from "./PaymentsManagement";
+import VideosManagement from "./VideosManagement";
 
 interface DashboardStats {
   totalApartments: number;
@@ -372,6 +373,9 @@ const AdminDashboard = () => {
           <Link to="/admin/discounts">
             <Button variant={location.pathname === '/admin/discounts' ? 'default' : 'outline'} className="whitespace-nowrap">Discounts</Button>
           </Link>
+          <Link to="/admin/videos">
+            <Button variant={location.pathname === '/admin/videos' ? 'default' : 'outline'} className="whitespace-nowrap">Shorts</Button>
+          </Link>
           <Link to="/admin/settings">
             <Button variant={location.pathname === '/admin/settings' ? 'default' : 'outline'} className="whitespace-nowrap">Settings</Button>
           </Link>
@@ -387,6 +391,7 @@ const AdminDashboard = () => {
           <Route path="/promotions" element={<PromotionsManagement />} />
           <Route path="/testimonials" element={<TestimonialsManagement />} />
           <Route path="/discounts" element={<DiscountsManagement />} />
+          <Route path="/videos" element={<VideosManagement />} />
           <Route path="/settings" element={<SiteSettingsManagement />} />
           <Route path="*" element={<AdminOverview />} />
         </Routes>

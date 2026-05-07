@@ -350,19 +350,21 @@ const ApartmentDetails = () => {
   };
 
   const getGoogleMapsEmbed = (url: string) => {
-    // Extract place ID or coordinates from Google Maps URL
+    // Direct embed URL
+    if (url.includes("output=embed")) return url;
+    // ?q=... style — convert to embed
+    try {
+      const u = new URL(url);
+      const q = u.searchParams.get("q");
+      if (q) return `https://www.google.com/maps?q=${encodeURIComponent(q)}&output=embed`;
+    } catch { /* ignore */ }
     if (url.includes('place/')) {
       const placeMatch = url.match(/place\/([^/]+)/);
-      if (placeMatch) {
-        const placeName = placeMatch[1];
-        return `https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${encodeURIComponent(placeName)}`;
-      }
+      if (placeMatch) return `https://www.google.com/maps?q=${encodeURIComponent(decodeURIComponent(placeMatch[1]))}&output=embed`;
     }
     if (url.includes('@')) {
       const coordsMatch = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-      if (coordsMatch) {
-        return `https://www.google.com/maps/embed/v1/view?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&center=${coordsMatch[1]},${coordsMatch[2]}&zoom=15`;
-      }
+      if (coordsMatch) return `https://www.google.com/maps?q=${coordsMatch[1]},${coordsMatch[2]}&output=embed`;
     }
     return null;
   };
