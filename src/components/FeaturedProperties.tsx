@@ -96,7 +96,7 @@ const FeaturedProperties = () => {
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
           {apartments.map((apartment) => (
-            <Card key={apartment.id} className="group overflow-hidden shadow-property hover:shadow-property-hover transition-all duration-300 transform hover:-translate-y-2">
+            <Card key={apartment.id} className="group overflow-hidden card-3d shadow-property hover:shadow-property-hover transition-all duration-300">
               <div className="relative overflow-hidden h-64">
                 {apartment.display_image ? (
                   <img 
