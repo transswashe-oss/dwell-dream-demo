@@ -122,6 +122,16 @@
     transform: rotateY(-6deg) rotateX(4deg) translateY(-6px);
     box-shadow: 0 30px 60px -20px hsl(195 100% 35% / 0.35), 0 18px 36px -18px hsl(220 90% 30% / 0.25);
   }
+
+  .card-3d {
+    transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.4s ease;
+    transform-style: preserve-3d;
+    will-change: transform;
+  }
+  .card-3d:hover {
+    transform: translateY(-6px) rotateX(2deg) rotateY(-2deg) scale(1.02);
+    box-shadow: 0 25px 50px -12px hsl(195 100% 35% / 0.35);
+  }
 }
 
 /* Font family choices */
