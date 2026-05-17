@@ -22,6 +22,7 @@ interface Booking {
   status: string;
   created_at: string;
   updated_at: string;
+  invoice_generated_at: string | null;
   check_in_date: string | null;
   check_in_time: string | null;
   nights: number | null;
