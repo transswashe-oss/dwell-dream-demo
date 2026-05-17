@@ -123,6 +123,13 @@ const MyBookings = () => {
         unitNumber: b.assigned_unit_number || b.apartment.unit_number || undefined,
         createdAt: b.created_at,
       });
+      if (!b.invoice_generated_at) {
+        await supabase
+          .from('bookings')
+          .update({ invoice_generated_at: new Date().toISOString() })
+          .eq('id', b.id);
+        fetchBookings();
+      }
     } catch (e: any) {
       toast({ title: 'Error', description: e.message || 'Could not generate receipt', variant: 'destructive' });
     }
