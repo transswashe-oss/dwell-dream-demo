@@ -153,6 +153,7 @@ export type Database = {
           discount_amount: number
           discount_code: string | null
           id: string
+          invoice_generated_at: string | null
           months: number | null
           mpesa_checkout_id: string | null
           mpesa_receipt: string | null
@@ -176,6 +177,7 @@ export type Database = {
           discount_amount?: number
           discount_code?: string | null
           id?: string
+          invoice_generated_at?: string | null
           months?: number | null
           mpesa_checkout_id?: string | null
           mpesa_receipt?: string | null
@@ -199,6 +201,7 @@ export type Database = {
           discount_amount?: number
           discount_code?: string | null
           id?: string
+          invoice_generated_at?: string | null
           months?: number | null
           mpesa_checkout_id?: string | null
           mpesa_receipt?: string | null

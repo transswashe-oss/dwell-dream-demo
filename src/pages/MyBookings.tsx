@@ -22,6 +22,7 @@ interface Booking {
   status: string;
   created_at: string;
   updated_at: string;
+  invoice_generated_at: string | null;
   check_in_date: string | null;
   check_in_time: string | null;
   nights: number | null;
@@ -122,6 +123,13 @@ const MyBookings = () => {
         unitNumber: b.assigned_unit_number || b.apartment.unit_number || undefined,
         createdAt: b.created_at,
       });
+      if (!b.invoice_generated_at) {
+        await supabase
+          .from('bookings')
+          .update({ invoice_generated_at: new Date().toISOString() })
+          .eq('id', b.id);
+        fetchBookings();
+      }
     } catch (e: any) {
       toast({ title: 'Error', description: e.message || 'Could not generate receipt', variant: 'destructive' });
     }
@@ -308,7 +316,7 @@ const MyBookings = () => {
                       createdAt={booking.created_at}
                       updatedAt={booking.updated_at}
                       paymentStatus={booking.payment_status}
-                      hasInvoice={booking.payment_status === 'paid' || booking.payment_status === 'pending'}
+                      invoiceGeneratedAt={booking.invoice_generated_at}
                     />
                   </CardContent>
                 </Card>

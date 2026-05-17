@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.generate-maps-url]
 verify_jwt = false
+
+[functions.daily-promo-email]
+verify_jwt = false
