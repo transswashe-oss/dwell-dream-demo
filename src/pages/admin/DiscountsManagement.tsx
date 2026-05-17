@@ -47,6 +47,17 @@ const DiscountsManagement = () => {
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Preflight: confirm authenticated admin session before insert (helps surface RLS issues clearly)
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast({ title: "Not signed in", description: "Please sign in as an admin to create discounts.", variant: "destructive" });
+      return;
+    }
+    const { data: roleRow } = await supabase.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").maybeSingle();
+    if (!roleRow) {
+      toast({ title: "Permission denied", description: "Your account doesn't have the admin role. Sign out and back in, or contact support.", variant: "destructive" });
+      return;
+    }
     const { error } = await supabase.from("discounts").insert({
       code: form.code.trim().toUpperCase(),
       description: form.description.trim() || null,
@@ -56,8 +67,14 @@ const DiscountsManagement = () => {
       ends_at: form.ends_at || null,
       active: form.active,
     });
-    if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
-    else {
+    if (error) {
+      const msg = error.code === "23505"
+        ? `A discount with code "${form.code.trim().toUpperCase()}" already exists.`
+        : error.message.includes("row-level security")
+        ? "Permission denied — please sign out and sign in again as an admin."
+        : error.message;
+      toast({ title: "Could not create discount", description: msg, variant: "destructive" });
+    } else {
       toast({ title: "Discount created" });
       setForm(emptyForm);
       load();
