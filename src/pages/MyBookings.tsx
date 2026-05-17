@@ -309,7 +309,7 @@ const MyBookings = () => {
                       createdAt={booking.created_at}
                       updatedAt={booking.updated_at}
                       paymentStatus={booking.payment_status}
-                      hasInvoice={booking.payment_status === 'paid' || booking.payment_status === 'pending'}
+                      invoiceGeneratedAt={booking.invoice_generated_at}
                     />
                   </CardContent>
                 </Card>
