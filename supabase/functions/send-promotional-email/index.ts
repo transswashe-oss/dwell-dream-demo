@@ -63,7 +63,6 @@ serve(async (req) => {
           from: `${BRAND.name} <${gmailUser}>`,
           to,
           subject,
-          content: subject,
           html,
         });
         sent++;
