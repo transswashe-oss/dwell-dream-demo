@@ -114,13 +114,19 @@ const ApartmentsManagement = () => {
       const locationVal = (formData.get('location') as string)?.trim();
       let mapsUrl = (formData.get('google_maps_url') as string)?.trim() || null;
 
-      // Auto-generate Google Maps URL from location using Lovable AI when not provided
+      // Auto-generate Google Maps URL from location using Lovable AI when not provided.
+      // Always fall back to a deterministic Google Maps query URL so the property
+      // page can still render a working embed even if the AI edge function fails.
       if (!mapsUrl && locationVal) {
         try {
           const { data: mapsData } = await supabase.functions.invoke('generate-maps-url', { body: { location: locationVal } });
           if (mapsData?.google_maps_url) mapsUrl = mapsData.google_maps_url;
         } catch (mapErr) {
-          console.warn('Auto maps generation failed:', mapErr);
+          console.warn('Auto maps generation failed, using fallback:', mapErr);
+        }
+        if (!mapsUrl) {
+          const q = encodeURIComponent(`${locationVal}, Mombasa, Kenya`);
+          mapsUrl = `https://www.google.com/maps?q=${q}`;
         }
       }
 
