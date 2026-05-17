@@ -9,6 +9,7 @@ import SubscribeForm from "../components/SubscribeForm";
 import ContactSection from "../components/ContactSection";
 import Footer from "../components/Footer";
 import WhatsAppChat from "../components/WhatsAppChat";
+import DiscountCountdown from "../components/DiscountCountdown";
 
 const Index = () => {
   return (
@@ -16,6 +17,7 @@ const Index = () => {
       <Navigation />
       <Hero />
       <ValueProps />
+      <DiscountCountdown />
       <FeaturedProperties />
       <RecentVideos />
       <HowItWorks />
